@@ -8,7 +8,9 @@ struct RenamePreviewList: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(spacing: 8) {
+
+                VStack(alignment: .center, spacing: 10) {
+
                     ForEach(items.indices, id: \.self) { index in
                         let item = items[index]
 
@@ -21,15 +23,27 @@ struct RenamePreviewList: View {
                         )
                         .id(index)
                         .contentShape(Rectangle())
-                        .onTapGesture { selectedIndex = index }
+                        .onTapGesture {
+                            selectedIndex = index
+
+                            // ★ 行クリックで詳細を開く
+                            DispatchQueue.main.async {
+                                NotificationCenter.default.post(
+                                    name: .openDetailFromList,
+                                    object: nil
+                                )
+                            }
+                        }
+                        .frame(maxWidth: 720)     // 中央揃えの最大幅
                     }
                 }
-                .padding(.horizontal, 48)          // 左右の余白を固定
-                .padding(.top, 8)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
             }
+            .frame(maxWidth: .infinity)
             .background(AppTheme.colors.background)
 
-            // 選択が変わったら中央あたりにスクロール
+            // 選択行が変わったらスクロール追従
             .onChange(of: selectedIndex) { newIndex in
                 if let idx = newIndex {
                     withAnimation {

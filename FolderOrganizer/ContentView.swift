@@ -1,15 +1,15 @@
 //  Views/ContentView.swift
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct ContentView: View {
 
-    @State private var items: [RenameItem] = FileScanService.loadSampleNames()
+    @State private var items: [RenameItem] = []
     @State private var selectedIndex: Int? = nil
     @State private var showingDetail = false
 
     var body: some View {
         ZStack {
-            // 背景＋タイトル＋ボタン＋一覧
             VStack(spacing: 24) {
 
                 // タイトル
@@ -18,14 +18,9 @@ struct ContentView: View {
                     .foregroundColor(AppTheme.colors.title)
                     .padding(.top, 24)
 
-                // フォルダ読み込みボタン（今はサンプル再読込）
+                // フォルダ読み込みボタン
                 Button {
-                    items = FileScanService.loadSampleNames()
-                    if items.isEmpty {
-                        selectedIndex = nil
-                    } else {
-                        selectedIndex = 0
-                    }
+                    selectFolderAndLoad()
                 } label: {
                     Text("フォルダ名を読み込んで変換プレビュー")
                         .font(.system(size: 15, weight: .semibold))
@@ -36,22 +31,16 @@ struct ContentView: View {
                 .tint(AppTheme.colors.primaryButton)
 
                 // 一覧
-                RenamePreviewList(
-                    items: $items,
-                    selectedIndex: $selectedIndex
-                )
+                RenamePreviewList(items: $items,
+                                  selectedIndex: $selectedIndex)
 
                 Spacer(minLength: 16)
             }
             .padding(.bottom, 24)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(AppTheme.colors.background)
 
             // 詳細ポップアップ
-            if showingDetail,
-               let idx = selectedIndex,
-               items.indices.contains(idx) {
-
+            if showingDetail, let idx = selectedIndex, items.indices.contains(idx) {
                 Color.black.opacity(0.25)
                     .ignoresSafeArea()
 
@@ -65,25 +54,25 @@ struct ContentView: View {
                 )
             }
         }
-        // キーボード操作（上下：選択移動、Return：詳細、ESC：閉じる）
+
+        // MARK: キーボード操作
         .onKeyDown { event in
             switch event.keyCode {
-            case 126: // ↑
-                moveSelection(delta: -1)
-            case 125: // ↓
-                moveSelection(delta: 1)
-            case 36:  // Return
-                openDetail()
-            case 53:  // ESC
-                showingDetail = false
-            default:
-                break
+            case 126: moveSelection(delta: -1)        // ↑
+            case 125: moveSelection(delta: 1)         // ↓
+            case 36:  openDetail()                    // Return
+            case 53:  showingDetail = false           // ESC
+            default: break
             }
+        }
+
+        // MARK: 行をクリック → 通知で詳細を開く
+        .onReceive(NotificationCenter.default.publisher(for: .openDetailFromList)) { _ in
+            openDetail()
         }
     }
 
-    // MARK: - キーボード用ヘルパー
-
+    // MARK: - キーボード移動
     private func moveSelection(delta: Int) {
         guard !items.isEmpty else { return }
 
@@ -95,12 +84,57 @@ struct ContentView: View {
 
     private func openDetail() {
         guard !items.isEmpty else { return }
-        if selectedIndex == nil {
-            selectedIndex = 0
-        }
+        if selectedIndex == nil { selectedIndex = 0 }
         showingDetail = true
     }
 
     private func movePrev() { moveSelection(delta: -1) }
     private func moveNext() { moveSelection(delta: 1) }
+
+    // MARK: - フォルダ選択
+    private func selectFolderAndLoad() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+
+        if panel.runModal() == .OK {
+            if let url = panel.url {
+                loadFolderNames(from: url)
+            }
+        }
+    }
+
+    // MARK: - 指定フォルダの「直下のフォルダ名だけ」を取得
+    private func loadFolderNames(from root: URL) {
+        do {
+            let contents = try FileManager.default.contentsOfDirectory(
+                at: root,
+                includingPropertiesForKeys: [.isDirectoryKey],
+                options: [.skipsHiddenFiles]
+            )
+
+            // 直下のフォルダのみを抽出
+            let onlyFolders = contents.filter { url in
+                (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+            }
+
+            // RenameItem に変換
+            self.items = onlyFolders.map { url in
+                let name = url.lastPathComponent
+                let result = NameNormalizer.normalize(name)
+
+                return RenameItem(
+                    original: result.original,
+                    normalized: result.displayName,
+                    flagged: false
+                )
+            }
+
+            selectedIndex = items.isEmpty ? nil : 0
+
+        } catch {
+            print("フォルダ読み込みエラー:", error)
+        }
+    }
 }
