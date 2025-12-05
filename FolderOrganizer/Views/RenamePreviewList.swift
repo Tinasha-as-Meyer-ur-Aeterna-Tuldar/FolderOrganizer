@@ -1,37 +1,48 @@
+//  Views/RenamePreviewList.swift
 import SwiftUI
 
 struct RenamePreviewList: View {
     @Binding var items: [RenameItem]
+    @Binding var selectedIndex: Int?
+
+    // 一覧の横幅をここで決める（全部この幅になる）
+    private let listWidth: CGFloat = 900
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                ForEach(items.indices, id: \.self) { index in
-                    let item = items[index]
+        ScrollViewReader { proxy in
+            ScrollView {
 
-                    RenamePreviewRow(
-                        original: item.original,
-                        normalized: item.normalized,
-                        isOdd: index % 2 == 0,
-                        flagged: $items[index].flagged
-                    )
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        openDetail(index)
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(items.indices, id: \.self) { index in
+                        let item = items[index]
+
+                        RenamePreviewRow(
+                            original: item.original,
+                            normalized: item.normalized,
+                            isOdd: index % 2 == 0,
+                            isSelected: index == selectedIndex,
+                            flagged: $items[index].flagged
+                        )
+                        .id(index)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedIndex = index
+                        }
+                    }
+                }
+                // 🔴 ここが超重要：VStack 全体の幅を固定
+                .frame(width: listWidth, alignment: .leading)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 20)
+            }
+            .background(AppTheme.colors.background)
+            .onChange(of: selectedIndex) { newIndex in
+                if let idx = newIndex {
+                    withAnimation {
+                        proxy.scrollTo(idx, anchor: .center)
                     }
                 }
             }
-            .frame(maxWidth: 900)          // 一覧の固定幅
-            .padding(.horizontal)
         }
-        .frame(maxWidth: .infinity)
-        .background(AppTheme.colors.background)
-    }
-
-    private func openDetail(_ index: Int) {
-        NotificationCenter.default.post(
-            name: .openDetailView,
-            object: index
-        )
     }
 }
