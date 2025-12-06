@@ -1,4 +1,4 @@
-//  Views/RenamePreviewList.swift
+// Views/RenamePreviewList.swift
 import SwiftUI
 
 struct RenamePreviewList: View {
@@ -8,9 +8,7 @@ struct RenamePreviewList: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-
-                VStack(alignment: .center, spacing: 10) {
-
+                LazyVStack(spacing: 8) {
                     ForEach(items.indices, id: \.self) { index in
                         let item = items[index]
 
@@ -22,28 +20,21 @@ struct RenamePreviewList: View {
                             flagged: $items[index].flagged
                         )
                         .id(index)
-                        .contentShape(Rectangle())
                         .onTapGesture {
                             selectedIndex = index
-
-                            // ★ 行クリックで詳細を開く
-                            DispatchQueue.main.async {
-                                NotificationCenter.default.post(
-                                    name: .openDetailFromList,
-                                    object: nil
-                                )
-                            }
+                            NotificationCenter.default.post(
+                                name: .openDetailFromList,
+                                object: index
+                            )
                         }
-                        .frame(maxWidth: 720)     // 中央揃えの最大幅
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, 24)
+                // 🔵 両側の余白だけ固定、中央のカードは可変
+                .padding(.horizontal, 40)
             }
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity)              // ScrollView 自体も横いっぱい
             .background(AppTheme.colors.background)
 
-            // 選択行が変わったらスクロール追従
             .onChange(of: selectedIndex) { newIndex in
                 if let idx = newIndex {
                     withAnimation {
