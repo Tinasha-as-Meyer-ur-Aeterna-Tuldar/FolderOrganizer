@@ -1,4 +1,3 @@
-// Views/MonospaceTextEditor.swift
 import SwiftUI
 
 struct MonospaceTextEditor: View {
@@ -9,32 +8,31 @@ struct MonospaceTextEditor: View {
     var body: some View {
         TextEditor(text: $text)
             .font(.system(size: 16, design: .monospaced))
-            .foregroundColor(.black)                          // 文字は黒
-            .padding(6)
-            .background(Color.white)                          // 背景は白で固定
-            .cornerRadius(6)
+            .foregroundColor(.black)
+            .scrollContentBackground(.hidden)   // ← TextEditor の内部背景を消す
+            .background(Color.white)            // ← 自前の白背景を適用
+            .padding(8)
+            .cornerRadius(8)
             .overlay(
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: 8)
                     .stroke(Color.gray.opacity(0.4), lineWidth: 1)
             )
             .onAppear {
                 moveCursorToEnd()
             }
-            // Enter → 保存
-        // Enter → 保存
-        .onKeyPress(.return) {
-            onCommit()
-            return .handled
-        }
-        // Esc → キャンセル
-        .onKeyPress(.escape) {
-            onCancel()
-            return .handled
-        }
+            // Enter
+            .onKeyPress(.return) {
+                onCommit()
+                return .handled
+            }
+            // Esc
+            .onKeyPress(.escape) {
+                onCancel()
+                return .handled
+            }
     }
 
     private func moveCursorToEnd() {
-        // macOS の NSTextView にカーソル移動命令
         DispatchQueue.main.async {
             NSApp.keyWindow?.firstResponder?
                 .tryToPerform(#selector(NSTextView.moveToEndOfDocument(_:)), with: nil)
