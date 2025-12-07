@@ -4,75 +4,189 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
 
+    // 一覧データ
     @State private var items: [RenameItem] = []
     @State private var selectedIndex: Int? = nil
+
+    // 詳細ポップアップ
     @State private var showingDetail = false
+
+    // 編集ポップアップ
+    @State private var showingEdit = false
+    @State private var editText: String = ""   // 編集用テキスト（旧のコピー）
+
+    // MARK: - Body
 
     var body: some View {
         ZStack {
             VStack(spacing: 24) {
 
                 // タイトル
-                Text("Folder Organizer")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(AppTheme.colors.title)
-                    .padding(.top, 24)
+                Text("FolderOrganizer")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(.blue)
+                    .padding(.top, 20)
 
                 // フォルダ読み込みボタン
-                Button {
-                    selectFolderAndLoad()
-                } label: {
-                    Text("フォルダ名を読み込んで変換プレビュー")
-                        .font(.system(size: 15, weight: .semibold))
+                Button(action: selectFolderAndLoad) {
+                    Text("フォルダを読み込む")
+                        .font(.system(size: 16, weight: .semibold))
                         .padding(.horizontal, 32)
                         .padding(.vertical, 10)
+                        .background(AppTheme.colors.primaryButton)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.colors.primaryButton)
+                .buttonStyle(.plain)
 
                 // 一覧
-                RenamePreviewList(items: $items,
-                                  selectedIndex: $selectedIndex)
-
-                Spacer(minLength: 16)
+                if items.isEmpty {
+                    Spacer()
+                } else {
+                    listView
+                }
             }
-            .padding(.bottom, 24)
-            .background(AppTheme.colors.background)
-
-            // 詳細ポップアップ
-            if showingDetail, let idx = selectedIndex, items.indices.contains(idx) {
-                Color.black.opacity(0.25)
-                    .ignoresSafeArea()
+            .padding(.bottom, 20)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppTheme.colors.background)
+        // 詳細シート
+        .sheet(isPresented: $showingDetail) {
+            if !items.isEmpty {
+                let index = selectedIndex ?? 0
 
                 RenameDetailView(
-                    item: items[idx],
-                    index: idx,
+                    item: items[index],
+                    index: index,
                     total: items.count,
-                    onPrev: movePrev,
-                    onNext: moveNext,
-                    onClose: { showingDetail = false }
+                    onPrev: {
+                        moveSelection(delta: -1)
+                    },
+                    onNext: {
+                        moveSelection(delta: +1)
+                    },
+                    onClose: {
+                        showingDetail = false
+                    },
+                    onEdit: {
+                        // 旧の文字列を編集テキストとしてコピー
+                        if let current = selectedIndex {
+                            editText = items[current].original
+                        } else {
+                            selectedIndex = index
+                            editText = items[index].original
+                        }
+                        // 詳細を閉じて編集モードへ
+                        showingDetail = false
+                        showingEdit = true
+                    }
                 )
+            } else {
+                Text("項目がありません")
+                    .padding(40)
             }
         }
-
-        // MARK: キーボード操作
-        .onKeyDown { event in
-            switch event.keyCode {
-            case 126: moveSelection(delta: -1)        // ↑
-            case 125: moveSelection(delta: 1)         // ↓
-            case 36:  openDetail()                    // Return
-            case 53:  showingDetail = false           // ESC
-            default: break
+        // 編集シート
+        .sheet(isPresented: $showingEdit) {
+            if let idx = selectedIndex, idx < items.count {
+                RenameEditView(
+                    editText: $editText,
+                    onCommit: { newText in
+                        // 保存：編集結果を「新」に反映
+                        items[idx].normalized = newText
+                        showingEdit = false
+                        showingDetail = true     // いったん詳細へ戻る
+                    },
+                    onCancel: {
+                        // 破棄：元の詳細に戻る
+                        showingEdit = false
+                        showingDetail = true
+                    }
+                )
+            } else {
+                Text("編集対象がありません")
+                    .padding(40)
             }
-        }
-
-        // MARK: 行をクリック → 通知で詳細を開く
-        .onReceive(NotificationCenter.default.publisher(for: .openDetailFromList)) { _ in
-            openDetail()
         }
     }
 
-    // MARK: - キーボード移動
+    // MARK: - LIST VIEW
+
+    private var listView: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 12) {
+
+                    // indices を変数にするとコンパイラエラーを回避しやすい
+                    let allIndices = items.indices
+
+                    ForEach(allIndices, id: \.self) { index in
+                        let item = items[index]
+                        let isOdd = index.isMultiple(of: 2)
+                        let isSelected = (selectedIndex == index)
+
+                        RenamePreviewRow(
+                            original: item.original,
+                            normalized: item.normalized,
+                            isOdd: isOdd,
+                            isSelected: isSelected,
+                            flagged: $items[index].flagged
+                        )
+                        .id(index)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            selectedIndex = index
+                            showingDetail = true
+                        }
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
+            }
+            .focusable(true)
+            .onKeyDown { event in
+                handleKey(event, proxy: proxy)
+            }
+        }
+    }
+
+    // MARK: - キー操作（一覧）
+
+    private func handleKey(_ event: NSEvent, proxy: ScrollViewProxy) {
+        // 詳細 or 編集を表示している間は一覧のキー操作は無効
+        if showingDetail || showingEdit {
+            return
+        }
+
+        guard !items.isEmpty else { return }
+
+        let current = selectedIndex ?? 0
+        var newIndex = current
+
+        switch event.keyCode {
+        case 126: // ↑
+            newIndex = max(current - 1, 0)
+
+        case 125: // ↓
+            newIndex = min(current + 1, items.count - 1)
+
+        case 36, 76: // Enter / Return
+            selectedIndex = current
+            openDetail()
+            return
+
+        default:
+            return
+        }
+
+        if newIndex != current {
+            selectedIndex = newIndex
+            withAnimation {
+                proxy.scrollTo(newIndex, anchor: .center)
+            }
+        }
+    }
+
     private func moveSelection(delta: Int) {
         guard !items.isEmpty else { return }
 
@@ -85,56 +199,33 @@ struct ContentView: View {
     private func openDetail() {
         guard !items.isEmpty else { return }
         if selectedIndex == nil { selectedIndex = 0 }
+        showingEdit = false
         showingDetail = true
     }
 
-    private func movePrev() { moveSelection(delta: -1) }
-    private func moveNext() { moveSelection(delta: 1) }
+    // MARK: - フォルダ読み込み
 
-    // MARK: - フォルダ選択
     private func selectFolderAndLoad() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
+        FileScanService.pickFolder { url in
+            guard let url = url else { return }
 
-        if panel.runModal() == .OK {
-            if let url = panel.url {
-                loadFolderNames(from: url)
-            }
-        }
-    }
+            // 実際にフォルダ内の名前一覧を取得
+            let names = FileScanService.loadFolderNames(from: url)
 
-    // MARK: - 指定フォルダの「直下のフォルダ名だけ」を取得
-    private func loadFolderNames(from root: URL) {
-        do {
-            let contents = try FileManager.default.contentsOfDirectory(
-                at: root,
-                includingPropertiesForKeys: [.isDirectoryKey],
-                options: [.skipsHiddenFiles]
-            )
-
-            // 直下のフォルダのみを抽出
-            let onlyFolders = contents.filter { url in
-                (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
-            }
-
-            // RenameItem に変換
-            self.items = onlyFolders.map { url in
-                let name = url.lastPathComponent
-                let result = NameNormalizer.normalize(name)
-
+            // NameNormalizer は String -> String を返す想定
+            let normalizedItems: [RenameItem] = names.map { name in
+                let normalized = NameNormalizer.normalize(name)
                 return RenameItem(
-                    original: result.original,
-                    normalized: result.displayName,
+                    original: name,          // ← 旧（元のファイル名）
+                    normalized: normalized,  // ← 新（正規化済み）
                     flagged: false
                 )
             }
 
-            selectedIndex = items.isEmpty ? nil : 0
-
-        } catch {
-            print("フォルダ読み込みエラー:", error)
+            DispatchQueue.main.async {
+                self.items = normalizedItems
+                self.selectedIndex = items.isEmpty ? nil : 0
+            }
         }
     }
 }

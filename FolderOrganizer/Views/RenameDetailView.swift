@@ -1,110 +1,133 @@
-// Views/RenameDetailView.swift
+//  Views/RenameDetailView.swift
 import SwiftUI
 
 struct RenameDetailView: View {
+
     let item: RenameItem
     let index: Int
     let total: Int
+
     let onPrev: () -> Void
     let onNext: () -> Void
     let onClose: () -> Void
+    let onEdit: () -> Void   // Enter で編集へ
 
-    // 一覧と同じ判定で背景色を決める
-    private var detailBackground: Color {
+    // 一覧と同期した背景色
+    private var detailBackgroundColor: Color {
         if TextClassifier.isSubtitle(item.normalized) {
             return AppTheme.colors.subtitleBackground
         }
         if TextClassifier.isPotentialSubtitle(item.normalized) {
-            return AppTheme.colors.potentialSubtitleStrong
+            return AppTheme.colors.potentialSubtitleBackground
         }
         return AppTheme.colors.cardBackground
     }
 
     var body: some View {
+        ZStack {
+            // うっすら暗く（後ろの一覧）が見えるオーバーレイ
+            Color.black.opacity(0.55)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onClose()          // 枠外クリックで閉じる
+                }
 
-        ZStack(alignment: .topTrailing) {
+            VStack(alignment: .leading, spacing: 20) {
 
-            VStack(alignment: .leading, spacing: 22) {
-
-                // 閉じるボタンと内容の間に少し余白を作る
-                Spacer().frame(height: 20)
+                // 上部：閉じるボタン
+                HStack {
+                    Spacer()
+                    Button(action: onClose) {
+                        Image(systemName: "xmark.circle.fill")
+                            .resizable()
+                            .frame(width: 26, height: 26)
+                            .foregroundColor(.gray)
+                    }
+                    .buttonStyle(.plain)
+                }
 
                 // 旧
                 HStack(alignment: .top, spacing: 6) {
                     Text("旧:")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 19, weight: .bold))
                         .foregroundColor(AppTheme.colors.oldText)
+
                     Text(item.original)
-                        .font(.system(size: 17))
+                        .font(.system(size: 19))
                         .foregroundColor(AppTheme.colors.oldText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
-                // 新
+                // 新（自動） ここでスペースを可視化
                 HStack(alignment: .top, spacing: 6) {
                     Text("新:")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 19, weight: .bold))
                         .foregroundColor(AppTheme.colors.newText)
+
                     DiffBuilder.highlightSpaces(in: item.normalized)
-                        .font(.system(size: 17))
+                        .font(.system(size: 19))
                         .foregroundColor(AppTheme.colors.newText)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
+                // 操作ガイド
+                Text("Enter で編集 / ↑↓ で移動 / Esc で閉じる")
+                    .font(.system(size: 14))
+                    .foregroundColor(.gray)
 
                 Spacer()
 
-                // 右下に上下ボタン
+                // 右下：前へ / 現在位置 / 次へ
                 HStack {
                     Spacer()
-                    VStack(spacing: 12) {
-                        Button {
-                            onPrev()
-                        } label: {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .resizable()
-                                .frame(width: 32, height: 32)
-                                .foregroundColor(AppTheme.colors.primaryButton)
-                        }
-                        .buttonStyle(.plain)
+                    VStack(spacing: 10) {
 
-                        Button {
-                            onNext()
-                        } label: {
-                            Image(systemName: "arrow.down.circle.fill")
+                        Button(action: onPrev) {
+                            Image(systemName: "chevron.up.circle.fill")
                                 .resizable()
-                                .frame(width: 32, height: 32)
+                                .frame(width: 34, height: 34)
                                 .foregroundColor(AppTheme.colors.primaryButton)
                         }
-                        .buttonStyle(.plain)
+                        .disabled(index == 0)
+
+                        Text("\(index + 1) / \(total)")
+                            .font(.system(size: 17, weight: .semibold))
+                            .foregroundColor(.black)
+
+                        Button(action: onNext) {
+                            Image(systemName: "chevron.down.circle.fill")
+                                .resizable()
+                                .frame(width: 34, height: 34)
+                                .foregroundColor(AppTheme.colors.primaryButton)
+                        }
+                        .disabled(index >= total - 1)
                     }
-                }
-
-                // 中央に「n / N」
-                HStack {
-                    Spacer()
-                    Text("\(index + 1) / \(total)")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(.black)
-                    Spacer()
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 8)
                 }
             }
-            .padding(26)
-
-            // 右上の × ボタン（ポップアップ内）
-            Button {
-                onClose()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .resizable()
-                    .frame(width: 26, height: 26)
-                    .foregroundColor(.gray.opacity(0.9))
-            }
-            .buttonStyle(.plain)
-            .padding(12)
+            .padding(.horizontal, 28)
+            .padding(.vertical, 20)
+            .frame(width: 720, height: 420)
+            .background(detailBackgroundColor)
+            .cornerRadius(18)
+            .shadow(radius: 14)
         }
-        .background(detailBackground)
-        .cornerRadius(18)
-        .shadow(radius: 14)
-        .frame(width: 720, height: 420)   // 少しコンパクトなポップアップ
+        // キーボード操作
+        .onKeyDown { event in
+            switch event.keyCode {
+            case 126: // ↑
+                onPrev()
+            case 125: // ↓
+                onNext()
+            case 36, 76: // Enter → 編集モードへ
+                onEdit()
+            case 53:  // Esc
+                onClose()
+            default:
+                break
+            }
+        }
     }
 }

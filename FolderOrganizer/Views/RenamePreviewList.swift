@@ -6,17 +6,20 @@ struct RenamePreviewList: View {
     @Binding var selectedIndex: Int?
 
     var body: some View {
-        ScrollViewReader { proxy in
+        // ForEach 用に先にインデックス配列を作っておく
+        let indices = Array(items.indices)
+
+        return ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 8) {
-                    ForEach(items.indices, id: \.self) { index in
+                    ForEach(indices, id: \.self) { index in
                         let item = items[index]
 
                         RenamePreviewRow(
                             original: item.original,
                             normalized: item.normalized,
-                            isOdd: index % 2 == 0,
-                            isSelected: index == selectedIndex,
+                            isOdd: index.isMultiple(of: 2),
+                            isSelected: selectedIndex == index,
                             flagged: $items[index].flagged
                         )
                         .id(index)
@@ -29,17 +32,14 @@ struct RenamePreviewList: View {
                         }
                     }
                 }
-                // 🔵 両側の余白だけ固定、中央のカードは可変
                 .padding(.horizontal, 40)
+                .padding(.vertical, 8)
             }
-            .frame(maxWidth: .infinity)              // ScrollView 自体も横いっぱい
-            .background(AppTheme.colors.background)
-
-            .onChange(of: selectedIndex) { newIndex in
-                if let idx = newIndex {
-                    withAnimation {
-                        proxy.scrollTo(idx, anchor: .center)
-                    }
+            // macOS 14 以降の新しい onChange シグネチャ
+            .onChange(of: selectedIndex) { _, newValue in
+                guard let idx = newValue else { return }
+                withAnimation {
+                    proxy.scrollTo(idx, anchor: .center)
                 }
             }
         }

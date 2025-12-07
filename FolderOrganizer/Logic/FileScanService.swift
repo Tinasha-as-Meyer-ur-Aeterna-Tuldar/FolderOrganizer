@@ -1,25 +1,45 @@
+// Services/FileScanService.swift
 import Foundation
+import AppKit
 
 struct FileScanService {
 
-    static func loadSampleNames() -> [RenameItem] {
-        let samples = [
-            "(同人誌) [たつわの里 (タツワイプ)] デリヘル呼んだら元同級生が来た～ポリネシアンセックス編～ (オリジナル)",
-            "(同人誌) [たつわの里 (タツワイプ)] デリヘル呼んだら元同級生が来た 2 (オリジナル)",
-            "(同人誌) [まかろんシュガー] 童貞大好き女学生ちゃん、絶倫童貞に敗北するーThird Time is Fateー (オリジナル)",
-            "[あおやまきいろ。] シスターガーデン 姉の膣内に射精して、妹の膣内にも射精した。",
-            "[しゅにち] ガチハメSEX指導 3",
-            "(成年コミック) [猫夜] あげちん♂ ～美女たちにSEXしてとせがまれて～ [DL版]",
-            "(C100) [い～ぐるらんど (鷹丸)] 一途な彼女が堕ちる瞬間 (オリジナル) [DL版]"
-        ]
+    // MARK: - フォルダ選択ダイアログ
 
-        return samples.map { name in
-            let norm = NameNormalizer.normalize(name)
-            return RenameItem(
-                original: norm.original,
-                normalized: norm.displayName,
-                flagged: false
-            )
+    static func pickFolder(completion: @escaping (URL?) -> Void) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "選択"
+
+        panel.begin { response in
+            if response == .OK {
+                completion(panel.urls.first)
+            } else {
+                completion(nil)
+            }
         }
+    }
+
+    // MARK: - 選択フォルダ直下の「フォルダ名一覧」を取得
+
+    static func loadFolderNames(from url: URL) -> [String] {
+        let fm = FileManager.default
+
+        guard let contents = try? fm.contentsOfDirectory(
+            at: url,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+
+        let folderNames = contents
+            .filter { $0.hasDirectoryPath }
+            .map { $0.lastPathComponent }
+            .sorted()
+
+        return folderNames
     }
 }

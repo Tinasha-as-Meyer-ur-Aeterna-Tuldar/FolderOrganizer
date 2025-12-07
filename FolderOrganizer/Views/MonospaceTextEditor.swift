@@ -1,42 +1,43 @@
+// Views/MonospaceTextEditor.swift
 import SwiftUI
 
 struct MonospaceTextEditor: View {
     @Binding var text: String
-    var onCommit: (() -> Void)? = nil
-    var onCancel: (() -> Void)? = nil
-
-    @FocusState private var isFocused: Bool
+    var onCommit: () -> Void
+    var onCancel: () -> Void
 
     var body: some View {
         TextEditor(text: $text)
             .font(.system(size: 16, design: .monospaced))
-            .foregroundColor(.black)
+            .foregroundColor(.black)                          // 文字は黒
             .padding(6)
-            .background(Color.white)
+            .background(Color.white)                          // 背景は白で固定
             .cornerRadius(6)
-            .focused($isFocused)
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.gray.opacity(0.4), lineWidth: 1)
+            )
             .onAppear {
-                DispatchQueue.main.async {
-                    isFocused = true          // フォーカスを当てる
-                    moveCursorToEnd()
-                }
+                moveCursorToEnd()
             }
-            .onSubmit {
-                onCommit?()
-            }
-            .onKeyPress(.escape) { _ in
-                onCancel?()
-                return .handled      // ★これが必要！
-            }
-            .onKeyPress(.return) { _ in
-                onCommit?()
-                return .handled
-            }
+            // Enter → 保存
+        // Enter → 保存
+        .onKeyPress(.return) {
+            onCommit()
+            return .handled
+        }
+        // Esc → キャンセル
+        .onKeyPress(.escape) {
+            onCancel()
+            return .handled
+        }
     }
 
     private func moveCursorToEnd() {
-        // macOS TextEditor のカーソル移動
-        NSApp.keyWindow?.firstResponder?
-            .tryToPerform(#selector(NSTextView.moveToEndOfDocument(_:)), with: nil)
+        // macOS の NSTextView にカーソル移動命令
+        DispatchQueue.main.async {
+            NSApp.keyWindow?.firstResponder?
+                .tryToPerform(#selector(NSTextView.moveToEndOfDocument(_:)), with: nil)
+        }
     }
 }
