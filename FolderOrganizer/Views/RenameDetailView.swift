@@ -87,7 +87,7 @@ struct RenameDetailView: View {
                             Image(systemName: "chevron.up.circle.fill")
                                 .resizable()
                                 .frame(width: 34, height: 34)
-                                .foregroundColor(AppTheme.colors.primaryButton)
+                                .foregroundColor(Color.accentColor)
                         }
                         .disabled(index == 0)
 
@@ -99,7 +99,7 @@ struct RenameDetailView: View {
                             Image(systemName: "chevron.down.circle.fill")
                                 .resizable()
                                 .frame(width: 34, height: 34)
-                                .foregroundColor(AppTheme.colors.primaryButton)
+                                .foregroundColor(Color.accentColor)
                         }
                         .disabled(index >= total - 1)
                     }

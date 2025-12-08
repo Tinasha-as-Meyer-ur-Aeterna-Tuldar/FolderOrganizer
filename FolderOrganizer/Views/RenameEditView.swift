@@ -1,17 +1,20 @@
-//  Views/RenameEditView.swift
 import SwiftUI
+import AppKit
 
 struct RenameEditView: View {
 
-    @Binding var editText: String     // 下段：編集中（新）
+    @Binding var editText: String     // 下段：編集中
     let onCommit: (String) -> Void
     let onCancel: () -> Void
 
     @FocusState private var isEditorFocused: Bool
 
+    private let editorWidth: CGFloat = 900
+    private let editorPadding: CGFloat = 10
+
     var body: some View {
         ZStack {
-            // 背景を少し暗くしてモーダル感だけ出す
+            // 背景暗幕
             Color.black.opacity(0.25)
                 .ignoresSafeArea()
 
@@ -19,83 +22,94 @@ struct RenameEditView: View {
 
                 // タイトル
                 Text("名前の修正（Esc でキャンセル）")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.headline)
 
-                // 上段：リアルタイム・プレビュー（スペースマーカー付き）
-                ScrollView {
-                    Text(previewText(from: editText))
-                        .font(.system(size: 20, weight: .regular, design: .monospaced))
-                        .foregroundColor(.black)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.vertical, 8)
-                        .padding(.horizontal, 10)
-                }
-                .frame(minHeight: 70, idealHeight: 90, maxHeight: 110)
-                .background(Color.white)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(Color.gray.opacity(0.5), lineWidth: 1)
-                )
-                .cornerRadius(14)
-
-                // 下段：編集欄（スペースマーカーなし）
-                TextEditor(text: $editText)
-                    .font(.system(size: 20, weight: .regular, design: .monospaced))
-                    .scrollContentBackground(.hidden)
-                    .background(Color.white)
-                    .foregroundColor(.black)
-                    .frame(minHeight: 110, idealHeight: 140, maxHeight: 170)
-                    .padding(4)
+                // ─────────────────────────────
+                // 上段：リアルタイムプレビュー（スクロールなし）
+                // ─────────────────────────────
+                Text(attributedPreview(from: editText))
+                    .font(.system(size: 20, design: .monospaced))
+                    .frame(width: editorWidth, height: 100, alignment: .topLeading)
+                    .padding(editorPadding)
+                    .background(Color(NSColor.textBackgroundColor))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.blue.opacity(0.6), lineWidth: 1.2)
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color(NSColor.separatorColor), lineWidth: 1)
+                    )
+                    .cornerRadius(12)
+
+                // ─────────────────────────────
+                // 下段：編集欄（スクロールバーなし）
+                // ─────────────────────────────
+                TextEditor(text: $editText)
+                    .font(.system(size: 20, design: .monospaced))
+                    .scrollContentBackground(.hidden)
+                    .scrollIndicators(.never)        // ← スクロールバー完全オフ
+                    .background(Color(NSColor.textBackgroundColor))
+                    .foregroundColor(.primary)
+                    .frame(width: editorWidth, height: 150)
+                    .padding(editorPadding)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(AppTheme.colors.selectedBorder.opacity(0.8),
+                                    lineWidth: 1.4)
                     )
                     .focused($isEditorFocused)
-                    // 改行禁止（macOS 14 の新 onChange シグネチャ）
                     .onChange(of: editText) { _, newValue in
+                        // フォルダ名なので改行禁止
                         let cleaned = newValue.replacingOccurrences(of: "\n", with: "")
                         if cleaned != newValue {
                             editText = cleaned
                         }
                     }
 
-                HStack(spacing: 16) {
+                // ─────────────────────────────
+                // ボタンエリア
+                // ─────────────────────────────
+                HStack {
                     Spacer()
 
                     Button("キャンセル") {
                         onCancel()
                     }
-                    .buttonStyle(.bordered)
 
                     Button("反映") {
                         onCommit(editText)
                     }
                     .buttonStyle(.borderedProminent)
-                    .controlSize(.large)   // 少し大きめに
+                    .controlSize(.large)
                 }
-                .padding(.top, 4)
+                .padding(.top, 5)
             }
-            .padding(.horizontal, 28)
-            .padding(.vertical, 24)
-            .background(Color(.windowBackgroundColor))   // 白系〜薄グレー
-            .cornerRadius(22)
-            .shadow(radius: 18)
-            .frame(maxWidth: 900)   // 詳細ポップアップよりちょっと狭い想定
+            .padding(.horizontal, 30)
+            .padding(.vertical, 28)
+            .background(Color(NSColor.windowBackgroundColor))
+            .cornerRadius(20)
+            .shadow(radius: 20)
         }
-        .onAppear {
-            isEditorFocused = true
-        }
-        .onExitCommand {
-            onCancel()
-        }
+        .onAppear { isEditorFocused = true }
+        .onExitCommand { onCancel() }
     }
 
-    // MARK: - プレビュー用ヘルパー
+    // MARK: - カラー付きスペースマーカー表示（上段）
 
-    /// スペースにマーカーを付けた文字列を生成（半角:␣ / 全角:▢）
-    private func previewText(from text: String) -> String {
-        text
-            .replacingOccurrences(of: " ", with: "␣")
-            .replacingOccurrences(of: "　", with: "▢")
+    private func attributedPreview(from text: String) -> AttributedString {
+        var result = AttributedString(text)
+
+        // 半角スペース
+        while let range = result.range(of: " ") {
+            var marker = AttributedString("␣")
+            marker.foregroundColor = AppTheme.colors.spaceMarkerHalf
+            result.replaceSubrange(range, with: marker)
+        }
+
+        // 全角スペース
+        while let range = result.range(of: "　") {
+            var marker = AttributedString("▢")
+            marker.foregroundColor = AppTheme.colors.spaceMarkerFull
+            result.replaceSubrange(range, with: marker)
+        }
+
+        return result
     }
 }
