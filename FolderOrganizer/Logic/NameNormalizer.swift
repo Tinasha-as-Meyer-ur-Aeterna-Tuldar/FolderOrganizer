@@ -344,7 +344,12 @@ struct NameNormalizer {
             "AI生成",
             "同人CG集",
             "同人誌",
-            "FANZA限定版"
+            "FANZA限定版",
+            "電子版",
+            "完全版",
+            "デジタル特装版",
+            "デジタル版限定おまけ付き",
+            "荻原沙优"
         ]
         if exactDelete.contains(inner) { return true }
 
@@ -362,6 +367,8 @@ struct NameNormalizer {
         if inner.contains("完全版") { return true }
         if inner.contains("デジタル特装版") { return true }
         if inner.contains("デジタル版限定おまけ付き") { return true }
+        if inner.contains("電子版") { return true }
+        if inner.contains("FANZA限定版") { return true }
 
         // 上記以外の [ ... ] は
         // サークル名 / 作者名 / その他の重要タグの可能性が高いので残す
@@ -383,6 +390,7 @@ struct NameNormalizer {
             "オリジナル",
             "同人誌",
             "成年コミック",
+            "一般コミック",
             "同人CG集"
         ]
         if exactDelete.contains(inner) { return true }
