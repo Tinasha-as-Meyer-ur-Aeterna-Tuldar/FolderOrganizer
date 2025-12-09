@@ -23,16 +23,19 @@ struct NameNormalizer {
         // 5. 〜 の前後スペースを調整（サブタイトルっぽいところだけ）
         result = normalizeWaveDashSpacing(result)
 
-        // 6. タイトル - サブタイトル のようなハイフン区切りを整形
+        // 6. タイトル-サブタイトル のようなハイフン区切りを整形
         result = normalizeHyphenSubtitle(result)
 
         // 7. [サークル名 (作者名)] → [作者名] にする
         result = fixAuthorBracket(in: result)
 
-        // 8. メタ情報タグ（[DL版] など）を削除
+        // 8. ！／？ を半角に統一し、必要な位置にスペースを入れる
+        result = normalizeExclamationQuestion(result)
+
+        // 9. メタ情報タグ（[DL版] など）を削除
         result = removeMetaTags(result)
 
-        // 9. スペースの最終整形
+        // 10. スペースの最終整形
         result = cleanSpaces(result)
 
         return result
@@ -195,8 +198,7 @@ struct NameNormalizer {
                 }
             }
 
-            // 2つ目の後ろにスペースを入れても、末尾なら最終的に cleanSpaces で削除されるので
-            // ここでは特別なことはしない（体裁が崩れやすいので）
+            // 2つ目の後ろは触らない
             return String(work)
         }
 
@@ -204,12 +206,13 @@ struct NameNormalizer {
         return text
     }
 
-    // MARK: - タイトル - サブタイトル のようなハイフン区切り
+    // MARK: - タイトル -サブタイトル のようなハイフン区切り
 
     /// 数字の範囲 (1-20) はそのまま。
-    /// 「文字-文字」だけ「文字 - 文字」に整形する。
+    /// 「文字-文字」だけ「文字 -サブタイトル」に整形する。
+    /// ただし、左側が英字（G-エッジ / COMIC X-EROS など）は触らない。
     private static func normalizeHyphenSubtitle(_ text: String) -> String {
-        let pattern = #"([^\s\d])\s*-\s*([^\s\d])"#
+        let pattern = #"([^A-Za-z\s\d])\s*-\s*([^\s\d])"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else {
             return text
         }
@@ -227,7 +230,9 @@ struct NameNormalizer {
 
             let left = String(result[leftRange])
             let right = String(result[rightRange])
-            let replacement = "\(left) - \(right)"
+
+            // 「タイトル-サブタイトル」→「タイトル -サブタイトル」（前だけスペース）
+            let replacement = "\(left) -\(right)"
             result.replaceSubrange(fullRange, with: replacement)
         }
 
@@ -272,6 +277,66 @@ struct NameNormalizer {
         } else {
             return "[\(author)] \(after)"
         }
+    }
+
+    // MARK: - ！／？ 正規化
+
+    /// ルール：
+    /// - 全角「！」「？」は半角に統一
+    /// - 連続する「!?!!?」などは **そのままの並びで維持**
+    /// - 直後がスペース／終端／閉じカッコ（」』】）] など）の場合は何もしない
+    /// - それ以外の場合は、連続記号列の「最後の直後」に半角スペースを 1 つ入れる
+    private static func normalizeExclamationQuestion(_ text: String) -> String {
+        // まずは全角 → 半角
+        var unified = ""
+        unified.reserveCapacity(text.count)
+        for ch in text {
+            switch ch {
+            case "！": unified.append("!")
+            case "？": unified.append("?")
+            default:   unified.append(ch)
+            }
+        }
+
+        let chars = Array(unified)
+        var i = 0
+        var result = ""
+
+        let closingChars: Set<Character> = [
+            "」", "』", "】", "》", ")", "]",
+            "）", "］", "｝", "}"
+        ]
+
+        while i < chars.count {
+            let c = chars[i]
+
+            if c == "!" || c == "?" {
+                // !/? の連続ブロック
+                var j = i
+                while j < chars.count && (chars[j] == "!" || chars[j] == "?") {
+                    result.append(chars[j])
+                    j += 1
+                }
+
+                // 連続ブロックの次の1文字を見て、必要ならスペース追加
+                if j < chars.count {
+                    let next = chars[j]
+
+                    // すでにスペース or 閉じカッコの直前なら何もしない
+                    if next != " " && !closingChars.contains(next) {
+                        result.append(" ")
+                    }
+                }
+                // 文末なら何もしない
+
+                i = j
+            } else {
+                result.append(c)
+                i += 1
+            }
+        }
+
+        return result
     }
 
     // MARK: - メタタグ削除（[DL版] など）
