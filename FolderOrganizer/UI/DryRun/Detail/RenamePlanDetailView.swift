@@ -9,18 +9,12 @@ struct RenamePlanDetailView: View {
 
     @State private var plan: RenamePlan
     @State private var showDecisionSheet = false
-
-    // 🔘 安全 Apply 用
     @State private var showSingleApply = false
 
-    // 🎛 Diff 表示設定
     @AppStorage(DiffSettings.showDiffKey)
     private var showDiff: Bool = true
 
-    init(
-        plan: RenamePlan,
-        decisionStore: UserDecisionStore
-    ) {
+    init(plan: RenamePlan, decisionStore: UserDecisionStore) {
         self.originalURL = plan.originalURL
         self._plan = State(initialValue: plan)
         self.decisionStore = decisionStore
@@ -29,21 +23,18 @@ struct RenamePlanDetailView: View {
     var body: some View {
         Form {
 
-            // MARK: - Rename（Before / After）
-
+            // MARK: - Rename
             Section("Rename") {
                 LabeledContent("Before") {
                     Text(plan.originalName)
                 }
-
                 LabeledContent("After") {
                     Text("\(plan.targetParentFolder.lastPathComponent) / \(plan.targetName)")
                         .fontWeight(.semibold)
                 }
             }
 
-            // MARK: - Diff Preview
-
+            // MARK: - Diff
             Section("Diff Preview") {
                 if showDiff {
                     DiffTextView(
@@ -59,18 +50,14 @@ struct RenamePlanDetailView: View {
                 }
             }
 
-            // MARK: - Detected Information
-
+            // MARK: - Detected Info
             Section("Detected Information") {
-
                 LabeledContent("Author") {
                     Text(plan.detectedAuthor ?? "—")
                 }
-
                 LabeledContent("Title") {
                     Text(plan.title)
                 }
-
                 LabeledContent("Subtitle") {
                     Text(plan.subtitle ?? "—")
                 }
@@ -78,24 +65,22 @@ struct RenamePlanDetailView: View {
                 LabeledContent("Maybe Subtitle") {
                     if let maybe = plan.maybeSubtitle {
                         HStack {
-                            Text(maybe)
-                                .foregroundColor(.orange)
+                            Text(maybe).foregroundColor(.orange)
                             Spacer()
                             Button("判断する") {
                                 showDecisionSheet = true
                             }
                         }
                     } else {
-                        Text("—")
-                            .foregroundColor(.secondary)
+                        Text("—").foregroundColor(.secondary)
                     }
                 }
             }
 
             // MARK: - Warnings
-
             if !plan.warnings.isEmpty {
                 Section("Warnings") {
+
                     ForEach(plan.warnings) { warning in
                         Label(
                             warning.message,
@@ -103,11 +88,24 @@ struct RenamePlanDetailView: View {
                         )
                         .foregroundColor(.orange)
                     }
+
+                    // 🔑 author 未検出のみ、解除ボタンを出す
+                    if hasAuthorNotDetected {
+                        Button {
+                            decisionStore.setAuthorDecision(
+                                .allowWithoutAuthor,
+                                for: originalURL
+                            )
+                        } label: {
+                            Text("作者不明のまま続行する")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
                 }
             }
 
-            // MARK: - 🔘 Safe Apply（★ここが追加部分）
-
+            // MARK: - Safe Apply
             Section {
                 Button {
                     showSingleApply = true
@@ -129,7 +127,7 @@ struct RenamePlanDetailView: View {
         }
         .navigationTitle("Rename Detail")
 
-        // maybe subtitle 判断 Sheet
+        // MARK: - Sheets
         .sheet(isPresented: $showDecisionSheet) {
             MaybeSubtitleDecisionView(
                 plan: plan,
@@ -137,33 +135,50 @@ struct RenamePlanDetailView: View {
             )
             .presentationDetents([.medium])
         }
-
-        // 🔘 安全 Apply Sheet
         .sheet(isPresented: $showSingleApply) {
             SingleApplyResultView(plan: plan)
                 .presentationDetents([.large])
         }
 
-        // 🔄 判断変更 → 再 DryRun
-        .onChange(of: decisionStore.decision(for: originalURL)) { _ in
+        // MARK: - Decision Change
+        .onChange(
+            of: decisionStore.decision(for: originalURL)
+        ) { (_: UserSubtitleDecision) in
+            regeneratePlan()
+        }
+        .onChange(
+            of: decisionStore.authorDecision(for: originalURL)
+        ) { (_: UserAuthorDecision) in
             regeneratePlan()
         }
     }
 
     // MARK: - Helpers
 
-    private var hasBlockingWarning: Bool {
+    private var hasAuthorNotDetected: Bool {
         plan.warnings.contains {
             if case .authorNotDetected = $0 { return true }
             return false
         }
     }
 
+    private var hasBlockingWarning: Bool {
+        hasAuthorNotDetected
+    }
+
     private func regeneratePlan() {
-        let decision = decisionStore.decision(for: originalURL)
-        plan = engine.generatePlan(
+        let subtitleDecision = decisionStore.decision(for: originalURL)
+
+        var newPlan = engine.generatePlan(
             for: originalURL,
-            userDecision: decision
+            userDecision: subtitleDecision
         )
+
+        // 🔑 author 許可済みなら blocking を解除
+        if decisionStore.authorDecision(for: originalURL) == .allowWithoutAuthor {
+            newPlan = newPlan.allowingWithoutAuthor()
+        }
+
+        plan = newPlan
     }
 }

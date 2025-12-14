@@ -3,49 +3,55 @@ import SwiftUI
 struct MaybeSubtitleDecisionView: View {
 
     let plan: RenamePlan
-
     @ObservedObject var decisionStore: UserDecisionStore
-    @Environment(\.dismiss) private var dismiss
+
+    @Environment(\.dismiss)
+    private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(spacing: 20) {
 
-            Text("不確定 subtitle の扱い")
+            Text("この文字列を Subtitle として扱いますか？")
                 .font(.headline)
 
-            Text(plan.maybeSubtitle ?? "")
-                .font(.title3)
-                .fontWeight(.semibold)
-
-            Picker(
-                "扱いを選択",
-                selection: Binding(
-                    get: {
-                        decisionStore.decision(for: plan.originalURL)
-                    },
-                    set: { newValue in
-                        decisionStore.setDecision(
-                            newValue,
-                            for: plan.originalURL
-                        )
-                    }
-                )
-            ) {
-                Text("未決定").tag(UserSubtitleDecision.undecided)
-                Text("subtitle として採用").tag(UserSubtitleDecision.confirmAsSubtitle)
-                Text("無視する").tag(UserSubtitleDecision.ignore)
+            if let maybe = plan.maybeSubtitle {
+                Text(maybe)
+                    .font(.title3)
+                    .padding()
             }
-            .pickerStyle(.segmented)
 
-            Spacer()
+            VStack(spacing: 12) {
 
-            HStack {
-                Spacer()
-                Button("閉じる") {
+                Button {
+                    decisionStore.setDecision(
+                        .confirmAsSubtitle,
+                        for: plan.originalURL
+                    )
                     dismiss()
+                } label: {
+                    Text("Subtitle として採用")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
+
+                Button {
+                    decisionStore.setDecision(
+                        .ignore,
+                        for: plan.originalURL
+                    )
+                    dismiss()
+                } label: {
+                    Text("無視する")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
             }
         }
         .padding()
+        .onChange(
+            of: decisionStore.decision(for: plan.originalURL)
+        ) { (_: UserSubtitleDecision) in
+            // DecisionStore 側で再 DryRun が走るので何もしない
+        }
     }
 }

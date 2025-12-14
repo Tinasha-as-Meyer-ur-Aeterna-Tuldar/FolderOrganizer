@@ -1,20 +1,18 @@
 import SwiftUI
-import UniformTypeIdentifiers
+import AppKit
 
 struct ContentView: View {
 
     @State private var selectedFolderURL: URL?
-    @State private var renamePlans: [RenamePlan] = []
+    @State private var itemURLs: [URL] = []
     @State private var showDryRun = false
 
-    private let engine = RenamePlanEngine()
+    @StateObject private var decisionStore = UserDecisionStore()
 
     var body: some View {
         NavigationStack {
-
             VStack(spacing: 20) {
 
-                // フォルダ選択
                 Button {
                     selectFolder()
                 } label: {
@@ -23,35 +21,31 @@ struct ContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
 
-                // 選択フォルダ表示
                 if let folder = selectedFolderURL {
-                    Text("選択中: \(folder.lastPathComponent)")
+                    Text("選択中: \(folder.path)")
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .lineLimit(2)
                 }
 
-                // DryRun 実行
-                if !renamePlans.isEmpty {
-                    Button {
-                        showDryRun = true
-                    } label: {
-                        Text("Dry Run を実行")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
+                Button {
+                    showDryRun = true
+                } label: {
+                    Text("Dry Run Preview を開く")
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.bordered)
+                .disabled(itemURLs.isEmpty)
 
                 Spacer()
             }
             .padding()
             .navigationTitle("Folder Organizer")
             .navigationDestination(isPresented: $showDryRun) {
-                DryRunPreviewView(plans: renamePlans)
+                DryRunPreviewView(itemURLs: itemURLs, decisionStore: decisionStore)
             }
         }
     }
-
-    // MARK: - Folder Selection
 
     private func selectFolder() {
         let panel = NSOpenPanel()
@@ -63,26 +57,19 @@ struct ContentView: View {
         if panel.runModal() == .OK {
             guard let url = panel.url else { return }
             selectedFolderURL = url
-            runDryRun(for: url)
+            loadItems(in: url)
         }
     }
 
-    // MARK: - DryRun
-
-    private func runDryRun(for folderURL: URL) {
-
-        renamePlans.removeAll()
-
+    private func loadItems(in folderURL: URL) {
         guard let contents = try? FileManager.default.contentsOfDirectory(
             at: folderURL,
             includingPropertiesForKeys: nil,
             options: [.skipsHiddenFiles]
         ) else {
+            itemURLs = []
             return
         }
-
-        renamePlans = contents.map {
-            engine.generatePlan(for: $0)
-        }
+        itemURLs = contents
     }
 }

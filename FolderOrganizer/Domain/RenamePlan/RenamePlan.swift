@@ -36,3 +36,35 @@ struct RenamePlan: Identifiable {
     /// 注意・警告
     let warnings: [RenameWarning]
 }
+
+// MARK: - Copy helpers（重要）
+
+extension RenamePlan {
+
+    /// 指定した warning を除外した新しい RenamePlan を返す
+    func removingWarnings(
+        where shouldRemove: (RenameWarning) -> Bool
+    ) -> RenamePlan {
+
+        RenamePlan(
+            originalURL: originalURL,
+            originalName: originalName,
+            normalizedName: normalizedName,
+            detectedAuthor: detectedAuthor,
+            title: title,
+            subtitle: subtitle,
+            maybeSubtitle: maybeSubtitle,
+            targetParentFolder: targetParentFolder,
+            targetName: targetName,
+            warnings: warnings.filter { !shouldRemove($0) }
+        )
+    }
+
+    /// authorNotDetected を解除した RenamePlan
+    func allowingWithoutAuthor() -> RenamePlan {
+        removingWarnings { warning in
+            if case .authorNotDetected = warning { return true }
+            return false
+        }
+    }
+}
