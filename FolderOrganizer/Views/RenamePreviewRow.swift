@@ -3,72 +3,58 @@ import SwiftUI
 
 struct RenamePreviewRow: View {
 
-    let item: RenameItem
-    let index: Int
-    @Binding var flagged: Bool
+    let original: String
+    let displayName: String
+    let isOdd: Bool
     let isSelected: Bool
+    let isModified: Bool
+    @Binding var flagged: Bool
 
-    private var isOdd: Bool { index % 2 == 1 }
-
-    var body: some View {
-        HStack(spacing: 10) {
-
-            Toggle("", isOn: $flagged)
-                .toggleStyle(.checkbox)
-                .labelsHidden()
-
-            VStack(alignment: .leading, spacing: 4) {
-
-                attributedText(item.original, color: AppTheme.colors.oldText)
-
-                attributedText(item.normalized, color: AppTheme.colors.newText)
-            }
-
-            Spacer()
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(backgroundColor)
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(isSelected ? AppTheme.colors.selectedBorder : .clear, lineWidth: 2)
-        )
-    }
-
+    /// 背景色（仮）
     private var backgroundColor: Color {
-        if item.isSubtitle {
+        if isSelected {
             return AppTheme.colors.subtitleBackground
         }
-        if item.isPotentialSubtitle {
-            return AppTheme.colors.potentialSubtitleBackground
-        }
-        return isOdd ? AppTheme.colors.rowAltBackground : AppTheme.colors.cardBackground
+        return isOdd
+            ? AppTheme.colors.cardBackground
+            : AppTheme.colors.background
     }
 
-    @ViewBuilder
-    private func attributedText(_ text: String, color: Color) -> some View {
-        Text(makeAttributedString(text))
-            .font(.system(.body, design: .monospaced))
-            .foregroundColor(color)
-            .fixedSize(horizontal: false, vertical: true)
-    }
+    var body: some View {
+        HStack(alignment: .top, spacing: 16) {
 
-    private func makeAttributedString(_ text: String) -> AttributedString {
-        var result = AttributedString()
-        for ch in text {
-            if ch == " " {
-                var a = AttributedString("␣")
-                a.foregroundColor = AppTheme.colors.spaceMarkerHalf
-                result.append(a)
-            } else if ch == "　" {
-                var a = AttributedString("▢")
-                a.foregroundColor = AppTheme.colors.spaceMarkerFull
-                result.append(a)
-            } else {
-                result.append(AttributedString(String(ch)))
+            // 旧名
+            Text(original)
+                .font(.system(size: 13))
+                .foregroundColor(AppTheme.colors.oldText)
+                .frame(width: 260, alignment: .leading)
+
+            // 新名（提案 or 編集後）
+            VStack(alignment: .leading, spacing: 6) {
+
+                DiffBuilder.highlightSpaces(in: displayName)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(AppTheme.colors.newText)
+
+                // 編集済みバッジ
+                if isModified {
+                    Text("編集済み")
+                        .font(.system(size: 10, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(AppTheme.colors.potentialSubtitleStrong.opacity(0.8))
+                        .cornerRadius(4)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // フラグ
+            Toggle("", isOn: $flagged)
+                .labelsHidden()
         }
-        return result
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(backgroundColor)
+        .cornerRadius(8)
     }
 }
