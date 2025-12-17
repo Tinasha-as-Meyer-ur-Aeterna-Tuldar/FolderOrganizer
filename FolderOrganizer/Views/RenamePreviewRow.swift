@@ -8,53 +8,70 @@ struct RenamePreviewRow: View {
     let isOdd: Bool
     let isSelected: Bool
     let isModified: Bool
+    let isSubtitle: Bool
+    let isPotentialSubtitle: Bool
     @Binding var flagged: Bool
 
-    private var backgroundColor: Color {
-        if isSelected {
-            return AppTheme.colors.subtitleBackground
-        }
-        return isOdd
-            ? AppTheme.colors.cardBackground
-            : AppTheme.colors.background
-    }
-
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
+        HStack(spacing: 12) {
 
-            // 旧名
+            // 左：Original（薄く）
             Text(original)
-                .font(.system(size: 13))
-                .foregroundColor(AppTheme.colors.oldText)
-                .frame(width: 260, alignment: .leading)
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            // 新名（差分ハイライト）
-            VStack(alignment: .leading, spacing: 6) {
+            // 右：提案/編集結果
+            Text(displayName)
+                .font(.system(size: 13, weight: .semibold))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                DiffBuilder.highlightDiff(
-                    old: original,
-                    new: displayName
-                )
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(AppTheme.colors.newText)
-
+            // バッジ類
+            HStack(spacing: 6) {
                 if isModified {
-                    Text("編集済み")
-                        .font(.system(size: 10, weight: .semibold))
+                    Text("MOD")
+                        .font(.system(size: 10, weight: .bold))
                         .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(AppTheme.colors.potentialSubtitleStrong.opacity(0.8))
-                        .cornerRadius(4)
+                        .padding(.vertical, 3)
+                        .background(AppTheme.colors.modifiedBadge.opacity(0.25))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                if isSubtitle {
+                    Text("SUB")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(AppTheme.colors.subtitleBadge.opacity(0.25))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                } else if isPotentialSubtitle {
+                    Text("MAYBE")
+                        .font(.system(size: 10, weight: .bold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(AppTheme.colors.maybeBadge.opacity(0.25))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
             Toggle("", isOn: $flagged)
+                .toggleStyle(.checkbox)
                 .labelsHidden()
+                .frame(width: 24)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
         .background(backgroundColor)
-        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(isSelected ? Color.accentColor.opacity(0.8) : Color.clear, lineWidth: 2)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var backgroundColor: Color {
+        if isSelected { return Color.accentColor.opacity(0.12) }
+        return isOdd ? AppTheme.colors.rowOdd : AppTheme.colors.rowEven
     }
 }

@@ -20,8 +20,6 @@ struct ApplyConfirmationRowView: View {
                         warning.message,
                         systemImage: warningIcon(for: warning)
                     )
-                    .font(.caption)
-                    .foregroundColor(warningColor(for: warning))
                 }
             }
         }
@@ -31,11 +29,11 @@ struct ApplyConfirmationRowView: View {
     private func warningIcon(for warning: RenameWarning) -> String {
         switch warning {
         case .authorNotDetected:
-            return "xmark.octagon.fill"
+            return "person.crop.circle.badge.questionmark"
         case .ambiguousSubtitle:
-            return "exclamationmark.triangle.fill"
+            return "questionmark.circle"
         case .duplicateNameExists:
-            return "exclamationmark.triangle.fill"
+            return "exclamationmark.triangle"
         }
     }
 

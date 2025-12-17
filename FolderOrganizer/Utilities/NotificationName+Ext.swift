@@ -1,7 +1,6 @@
-// Utilities/NotificationName+Ext.swift
 import Foundation
 
 extension Notification.Name {
-    /// 一覧行をクリックしたときに「詳細を開く」ための通知
+    /// 一覧から詳細を開く
     static let openDetailFromList = Notification.Name("openDetailFromList")
 }

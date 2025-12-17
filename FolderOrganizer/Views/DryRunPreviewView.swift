@@ -1,39 +1,39 @@
 // Views/DryRunPreviewView.swift
 import SwiftUI
+import Combine
 
 struct DryRunPreviewView: View {
 
-    @StateObject private var decisionStore = UserDecisionStore()
-
-    let itemURLs: [URL]
+    // MARK: - Dependencies
     let engine: RenamePlanEngine
+    @ObservedObject var decisionStore: UserDecisionStore
 
+    // MARK: - Inputs
+    let itemURLs: [URL]
+
+    // MARK: - State
     @State private var plans: [RenamePlan] = []
 
+    // MARK: - View
     var body: some View {
         ApplyConfirmationView(plans: plans)
             .onAppear {
                 rebuildPlans()
             }
-            // Subtitle の意思決定が変わったら再生成
+            // Subtitle decision changed
             .onReceive(decisionStore.$subtitleDecisions) { _ in
                 rebuildPlans()
             }
-            // Author の意思決定が変わったら再生成（今は最小だけど将来の拡張に備えて入れておく）
+            // Author decision changed
             .onReceive(decisionStore.$authorDecisions) { _ in
                 rebuildPlans()
             }
     }
 
     // MARK: - Build plans
-
     private func rebuildPlans() {
         plans = itemURLs.map { url in
-            engine.generatePlan(
-                for: url,
-                subtitleDecision: decisionStore.subtitleDecision(for: url),
-                authorDecision: decisionStore.authorDecision(for: url)
-            )
+            engine.generatePlan(for: url)
         }
     }
 }

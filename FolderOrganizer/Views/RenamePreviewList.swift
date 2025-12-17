@@ -8,33 +8,28 @@ struct RenamePreviewList: View {
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 8) {
+                LazyVStack(spacing: 6) {
                     ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
                         RenamePreviewRowView(
                             item: item,
                             index: index,
-                            isSelected: index == selectedIndex,
+                            isSelected: selectedIndex == index,
                             flagged: $items[index].flagged,
                             onSelect: {
                                 selectedIndex = index
-                                NotificationCenter.default.post(
-                                    name: .openDetailFromList,
-                                    object: index
-                                )
+                                NotificationCenter.default.post(name: .openDetailFromList, object: index)
                             }
                         )
                         .id(item.id)
                     }
                 }
-                .padding(.horizontal, 40)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
-            .frame(maxWidth: .infinity)
-            .background(AppTheme.colors.background)
-            .onChange(of: selectedIndex) { newIndex in
-                if let idx = newIndex {
-                    withAnimation {
-                        proxy.scrollTo(items[idx].id, anchor: .center)
-                    }
+            .onChange(of: selectedIndex) { _, newIndex in
+                guard let idx = newIndex, items.indices.contains(idx) else { return }
+                withAnimation {
+                    proxy.scrollTo(items[idx].id, anchor: .center)
                 }
             }
         }

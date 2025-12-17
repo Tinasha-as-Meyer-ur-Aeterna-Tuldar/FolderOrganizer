@@ -1,113 +1,93 @@
+//
+//  RenamePlanBuilder.swift
+//  FolderOrganizer
+//
+//  RenamePlan を組み立てる責務を持つ Builder
+//
+
 import Foundation
 
-protocol RenamePlanBuilder {
+// MARK: - Protocol
 
-    /// 文脈と役割から DryRun 用 RenamePlan を構築する
+protocol RenamePlanBuilder {
     func build(
         originalURL: URL,
+        originalName: String,
         normalizedName: String,
         roles: RoleDetectionResult,
         context: ContextInfo
     ) -> RenamePlan
 }
 
+// MARK: - Default Implementation
+
 final class DefaultRenamePlanBuilder: RenamePlanBuilder {
 
     func build(
         originalURL: URL,
+        originalName: String,
         normalizedName: String,
         roles: RoleDetectionResult,
         context: ContextInfo
     ) -> RenamePlan {
 
+        // MARK: - Target Parent
+        let targetParentFolder = context.currentParent
+
+        // MARK: - Target Name
+        let targetName = buildTargetName(
+            title: roles.title,
+            subtitle: roles.subtitle
+        )
+
+        // MARK: - Warnings
         var warnings: [RenameWarning] = []
 
-        // MARK: - Author warning
-
+        // 作者未検出
         if roles.author == nil {
             warnings.append(.authorNotDetected)
         }
 
-        // MARK: - Subtitle warning
-
-        if let maybe = roles.maybeSubtitle {
-            warnings.append(.ambiguousSubtitle(maybe))
+        // サブタイトル曖昧
+        if roles.maybeSubtitle != nil {
+            warnings.append(.ambiguousSubtitle)
         }
 
-        // MARK: - Target Parent
+        // 同名存在（DryRun では仮判定）
+        if context.duplicateNameExists {
+            warnings.append(.duplicateNameExists)
+        }
 
-        let targetParent = resolveTargetParent(
-            roles: roles,
-            context: context
-        )
-
-        // MARK: - Target Name
-
-        let targetName = buildTargetName(
-            roles: roles,
-            context: context
-        )
-
-        // MARK: - Duplicate name warning（DryRun用・存在チェックはまだしない）
-        // → 将来 Apply フェーズで FileManager と連携
-
+        // MARK: - Build RenamePlan
         return RenamePlan(
             originalURL: originalURL,
-            originalName: originalURL.lastPathComponent,
+            originalName: originalName,
             normalizedName: normalizedName,
+
             detectedAuthor: roles.author,
             title: roles.title,
             subtitle: roles.subtitle,
             maybeSubtitle: roles.maybeSubtitle,
-            targetParentFolder: targetParent,
+
+            targetParentFolder: targetParentFolder,
             targetName: targetName,
+
             warnings: warnings
         )
     }
-}
 
-private extension DefaultRenamePlanBuilder {
+    // MARK: - Helpers
 
-    // MARK: - Parent Resolution
-
-    /// 移動先の親フォルダを決定
-    func resolveTargetParent(
-        roles: RoleDetectionResult,
-        context: ContextInfo
-    ) -> URL {
-
-        // 作者フォルダ直下 → そのまま
-        if context.isUnderAuthorFolder {
-            return context.currentParent
-        }
-
-        // 作者未検出 → 移動しない
-        guard let author = roles.author else {
-            return context.currentParent
-        }
-
-        // 作者フォルダを新規作成する想定（DryRun）
-        return context.currentParent.appendingPathComponent(author)
-    }
-
-    // MARK: - Target Name
-
-    /// 最終的なフォルダ名を構築
-    func buildTargetName(
-        roles: RoleDetectionResult,
-        context: ContextInfo
+    /// title / subtitle から最終的なフォルダ名を生成
+    private func buildTargetName(
+        title: String,
+        subtitle: String?
     ) -> String {
 
-        var components: [String] = []
-
-        // title は必須
-        components.append(roles.title)
-
-        // 確定 subtitle のみ追加
-        if let subtitle = roles.subtitle {
-            components.append("(\(subtitle))")
+        guard let subtitle, !subtitle.isEmpty else {
+            return title
         }
 
-        return components.joined(separator: " ")
+        return "\(title) \(subtitle)"
     }
 }

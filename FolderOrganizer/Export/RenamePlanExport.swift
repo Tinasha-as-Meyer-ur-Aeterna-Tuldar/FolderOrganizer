@@ -1,19 +1,20 @@
 import Foundation
 
+/// RenamePlan の書き出し用 DTO
 struct RenamePlanExport: Codable {
 
-    let version: ExportVersion
+    enum Version: String, Codable {
+        case v1
+    }
+
+    let version: Version
     let exportedAt: Date
 
     let originalPath: String
     let originalName: String
-
     let normalizedName: String
 
     let detectedAuthor: String?
-    let title: String
-    let subtitle: String?
-    let maybeSubtitle: String?
 
     let targetParentPath: String
     let targetName: String
@@ -29,9 +30,6 @@ struct RenamePlanExport: Codable {
         self.normalizedName = plan.normalizedName
 
         self.detectedAuthor = plan.detectedAuthor
-        self.title = plan.title
-        self.subtitle = plan.subtitle
-        self.maybeSubtitle = plan.maybeSubtitle
 
         self.targetParentPath = plan.targetParentFolder.path
         self.targetName = plan.targetName
