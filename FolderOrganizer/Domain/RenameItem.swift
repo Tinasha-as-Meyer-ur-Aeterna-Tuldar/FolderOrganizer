@@ -2,12 +2,12 @@
 import Foundation
 
 /// UIで編集しながら使う「1行ぶん」のリネーム作業データ
+///
 /// - original: 元の名前（フォルダ名）
 /// - normalized: 正規化後の提案名（自動生成）
-/// - edited: ユーザーが編集した名前（空なら未編集）
-/// - flagged: 要注意フラグ（手動チェック用）
+/// - edited: ユーザーが編集した最終候補（未編集なら normalized を入れておく）
+/// - flagged: 要確認フラグ（手動チェック用）
 struct RenameItem: Identifiable, Hashable {
-
     // MARK: - Identity
     var id: UUID
 
@@ -18,54 +18,65 @@ struct RenameItem: Identifiable, Hashable {
     var flagged: Bool
 
     // MARK: - Init
+
+    /// 推奨：基本はこちらを使う。
+    /// edited は「空」ではなく、最初から normalized を入れておく（＝編集欄に表示される）
     init(
         id: UUID = UUID(),
         original: String,
         normalized: String,
-        edited: String = "",
+        edited: String? = nil,
         flagged: Bool = false
     ) {
         self.id = id
         self.original = original
         self.normalized = normalized
-        self.edited = edited
+
+        // ここがBの本体：編集欄が空にならないようにする
+        // - edited が nil / "" の場合は normalized を採用
+        let e = (edited ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        self.edited = e.isEmpty ? normalized : edited!
+
         self.flagged = flagged
     }
 
-    // MARK: - Derived
+    // MARK: - Convenience
 
-    /// 現時点での「新しい名前」
-    /// - edited が空なら normalized を採用
-    var currentNewName: String {
-        edited.isEmpty ? normalized : edited
-    }
-
-    /// ユーザーが編集して「提案名から変更されたか」
-    var isModified: Bool {
-        !edited.isEmpty && edited != normalized
-    }
-
-    /// 一覧表示に使う名前（RenamePreviewRowView 用）
+    /// 一覧で表示する「現在の名前」
+    /// （基本は edited を表示。万一空なら normalized にフォールバック）
     var displayNameForList: String {
-        currentNewName
+        let e = edited.trimmingCharacters(in: .whitespacesAndNewlines)
+        return e.isEmpty ? normalized : e
     }
 
-    // MARK: - Subtitle heuristics
-
-    var isSubtitle: Bool {
-        TextClassifier.isSubtitle(currentNewName)
+    /// 編集内容が「提案と同じか？」（差分表示やMODバッジ判定に使う）
+    var isModified: Bool {
+        displayNameForList != normalized
     }
 
-    var isPotentialSubtitle: Bool {
-        TextClassifier.isPotentialSubtitle(currentNewName)
-    }
-
-    // MARK: - Helpers
-
-    /// 編集内容を破棄して「提案名」に戻す（ContentView の resetEditedName 対応）
+    /// 「提案に戻す」ボタン用（昔の呼び出し互換）
     func resetEditedName() -> RenameItem {
         var copy = self
-        copy.edited = ""
+        copy.edited = normalized
         return copy
+    }
+
+    /// 明示的に編集値を更新したい場合
+    func withEdited(_ newValue: String) -> RenameItem {
+        var copy = self
+        copy.edited = newValue
+        return copy
+    }
+
+    // MARK: - Subtitle helpers（既存設計を尊重）
+
+    /// 自動でサブタイトルと判定されたもの
+    var isSubtitle: Bool {
+        TextClassifier.isSubtitle(displayNameForList)
+    }
+
+    /// サブタイトルの可能性あり（要チェック）
+    var isPotentialSubtitle: Bool {
+        TextClassifier.isPotentialSubtitle(displayNameForList)
     }
 }

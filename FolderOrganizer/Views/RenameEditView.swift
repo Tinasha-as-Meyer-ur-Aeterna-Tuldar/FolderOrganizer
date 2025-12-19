@@ -3,16 +3,10 @@ import SwiftUI
 
 struct RenameEditView: View {
 
-    /// 初期の元名前（比較・初期値用）
     let original: String
-
-    /// 編集中の文字列（リアルタイム反映）
     @Binding var edited: String
-    
-    /// 反映（Enter / 反映ボタン）
-    let onCommit: () -> Void
 
-    /// キャンセル（Esc）
+    let onCommit: () -> Void
     let onCancel: () -> Void
 
     @FocusState private var focused: Bool
@@ -24,19 +18,32 @@ struct RenameEditView: View {
                 .font(.headline)
 
             // ─────────────────────────
-            // リアルタイムプレビュー
+            // リアルタイムプレビュー（色付きスペース）
             // ─────────────────────────
-            GroupBox("プレビュー（編集内容が即時反映）") {
-                Text(makeAttributedString(edited.isEmpty ? original : edited))
-                    .font(.system(size: 15, design: .monospaced))
-                    .foregroundColor(AppTheme.colors.newText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("プレビュー（編集内容が即時反映）")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(
+                    SpaceMarkerText.make(
+                        edited.isEmpty ? original : edited
+                    )
+                )
+                .font(.system(size: 15, design: .monospaced))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .textSelection(.enabled)
+                .padding(10)
+                .background(AppTheme.colors.previewBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(AppTheme.colors.previewBorder)
+                )
+                .cornerRadius(6)
             }
 
             // ─────────────────────────
-            // 編集欄
+            // 編集欄（生テキスト）
             // ─────────────────────────
             GroupBox("編集") {
                 TextEditor(text: $edited)
@@ -49,63 +56,26 @@ struct RenameEditView: View {
             }
 
             HStack {
-                Button("キャンセル") {
-                    onCancel()
-                }
-
+                Button("キャンセル") { onCancel() }
                 Spacer()
-
-                Button("反映") {
-                    onCommit()
-                }
-                .buttonStyle(.borderedProminent)
+                Button("反映") { onCommit() }
+                    .buttonStyle(.borderedProminent)
             }
         }
         .padding(20)
-        .frame(
-            minWidth: 520,
-            idealWidth: 600,
-            maxWidth: 640
-        )
+        .frame(minWidth: 520, idealWidth: 600, maxWidth: 640)
         .frame(minHeight: 380)
-
-        // ─────────────────────────
-        // Keyboard
-        // ─────────────────────────
         .focusable(true)
         .onAppear { focused = true }
 
-        // Enter = 反映（改行しない）
         .onKeyPress(.return) {
             onCommit()
             return .handled
         }
 
-        // Esc = キャンセル
         .onKeyPress(.escape) {
             onCancel()
             return .handled
         }
-    }
-
-    // MARK: - 色付きスペース生成
-    private func makeAttributedString(_ text: String) -> AttributedString {
-        var result = AttributedString()
-
-        for ch in text {
-            if ch == " " {
-                var a = AttributedString("␣")
-                a.foregroundColor = AppTheme.colors.spaceMarkerHalf
-                result.append(a)
-            } else if ch == "　" {
-                var a = AttributedString("▢")
-                a.foregroundColor = AppTheme.colors.spaceMarkerFull
-                result.append(a)
-            } else {
-                result.append(AttributedString(String(ch)))
-            }
-        }
-
-        return result
     }
 }

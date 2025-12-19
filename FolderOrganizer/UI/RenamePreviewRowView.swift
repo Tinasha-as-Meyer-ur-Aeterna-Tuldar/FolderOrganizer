@@ -16,8 +16,8 @@ struct RenamePreviewRowView: View {
                     .font(.system(size: 12))
                     .opacity(0.75)
 
-                Text(item.displayNameForList)
-                    .font(.system(size: 14, weight: .semibold))
+                Text(SpaceMarkerText.make(item.displayNameForList))
+                .font(.system(size: 14, weight: .semibold))
             }
 
             Spacer()
