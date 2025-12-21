@@ -1,7 +1,12 @@
-// Views/PreviewListContent.swift
+//
+// Views/Rename/Preview/PreviewListContent.swift
+// 【新規】Preview 一覧本体
+//
 import SwiftUI
 
+/// 旧 PreviewListContent（互換用）
 struct PreviewListContent: View {
+
     @Binding var items: [RenameItem]
     @Binding var selectedIndex: Int?
 
@@ -17,9 +22,7 @@ struct PreviewListContent: View {
                     isSelected: selectedIndex == index,
                     showSpaceMarkers: showSpaceMarkers,
                     flagged: $items[index].flagged,
-                    onSelect: {
-                        onSelect(index)
-                    }
+                    onSelect: { onSelect(index) }
                 )
             }
         }

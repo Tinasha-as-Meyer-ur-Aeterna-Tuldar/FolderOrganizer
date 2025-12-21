@@ -1,25 +1,31 @@
+//
 // Logic/FileScanService.swift
+//
 import Foundation
 
+/// フォルダスキャン結果のダミーデータ生成用サービス
+/// - UIプレビュー / 開発中の確認用途
 struct FileScanService {
 
-    /// デバッグ・UIプレビュー用
+    /// デバッグ・プレビュー用の仮データ
     static func loadSampleNames() -> [RenameItem] {
+
         let samples: [String] = [
-            "【同人誌】【黒山羊×工玉】元カレのデカチンが忘れられないの？（オリジナル）【DL版】",
-            "【diletta】愛獣に飢えた渋谷令嬢をメス堕ちさせるまで飼いならし、堕ろ。",
-            "【立花ナミ】異世界ハーレム物語 vol.2.5",
-            "【あいさわひろり】",
-            "【成年コミック】【猫夜】あげちん♂〜美女たちにSEXしてとせがまれて〜【DL版】"
+            "【同人誌】【黒山羊×玉】元カレのテクが忘れられない？（オリジナル）[DL版]",
+            "[diletta] 異世界で治癒魔法を使いこなして鍛えなおし、堕る。",
+            "【立花ナツ】 異世界ハーレム物語 vol.2.5",
+            "【あいざわひろ】",
+            "【成年コミック】【猫夜】 あげちん〜美女たちにSEXしてとせがまれて〜 [DL版]"
         ]
 
         return samples.map { name in
-            let result = NameNormalizer.normalize(name)
+            let normalized = NameNormalizer.normalize(name)
 
             return RenameItem(
+                id: UUID(),
                 original: name,
-                normalized: result.normalizedName,
-                edited: "",
+                normalized: normalized,
+                edited: normalized,   // 初期状態では normalized をそのまま編集対象に
                 flagged: false
             )
         }

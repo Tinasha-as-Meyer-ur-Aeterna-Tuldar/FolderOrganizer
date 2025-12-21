@@ -4,12 +4,9 @@ import SwiftUI
 enum AppTheme {
 
     enum colors {
-        
-        //        static let previewBackground = Color.secondary.opacity(0.12)
-        
-        //        static let spaceHalf = Color.blue.opacity(0.55)
-        //        static let spaceFull = Color.orange.opacity(0.85)
-        
+         
+        static let background = Color.black.opacity(0.92)
+
         static let spaceHalf = Color.white
         static let spaceFull = Color.white
         
@@ -32,10 +29,7 @@ enum AppTheme {
         static let maybeBadge    = Color.orange
         
         static let newText         = Color.accentColor
-       
-        // 既存
-//        static let cardBackground = Color.primary.opacity(0.04)
-        
+               
         // 追加（これだけ残す）
         static let previewBackground = Color.primary.opacity(0.05)
         static let previewBorder     = Color.primary.opacity(0.15)

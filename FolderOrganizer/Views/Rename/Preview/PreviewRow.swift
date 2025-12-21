@@ -1,7 +1,13 @@
-// Views/PreviewRow.swift
+//
+// Views/Rename/Preview/PreviewRow.swift
+// 【新規】Preview 行表示（1行分）
+//
 import SwiftUI
 
+/// 旧 PreviewRow（互換用）
+/// - 中身は RenameRowView に寄せる
 struct PreviewRow: View {
+
     let item: RenameItem
     let index: Int
     let isSelected: Bool
@@ -12,14 +18,10 @@ struct PreviewRow: View {
     let onSelect: () -> Void
 
     var body: some View {
-        RenamePreviewRowView(
+        RenameRowView(
             item: item,
-            index: index,
-            isSelected: isSelected,
             showSpaceMarkers: showSpaceMarkers,
-            flagged: $flagged,
-            onSelect: onSelect
+            onEdit: onSelect
         )
-        .id(item.id)
     }
 }
