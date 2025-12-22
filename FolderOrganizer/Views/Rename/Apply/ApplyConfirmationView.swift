@@ -1,118 +1,118 @@
+//
+// Views/Rename/Apply/ApplyConfirmationView.swift
+//
 import SwiftUI
 
+/// リネーム適用前の最終確認画面
+///
+/// - 変更内容（Diff）
+/// - 件数サマリー
+/// - 警告の有無
+/// を確認し、実行可否を判断する
 struct ApplyConfirmationView: View {
 
     let plans: [RenamePlan]
 
-    // MARK: - State
+    let onApply: () -> Void
+    let onCancel: () -> Void
 
-    @State private var confirmed = false
-    @State private var showExecution = false
-    @State private var showFinalAlert = false
+    // MARK: - Derived
 
-    // MARK: - Summary
-
-    private var summary: RenameChangeSummary {
-        RenameChangeSummary.build(from: plans)
+    private var changedPlans: [RenamePlan] {
+        plans.filter { $0.originalName != $0.targetName }
     }
 
-    private var hasBlockingError: Bool {
-        summary.blockingCount > 0
+    private var warningPlans: [RenamePlan] {
+        plans.filter { !$0.warnings.isEmpty }
     }
 
-    private var hasAnyChange: Bool {
-        summary.moveCount + summary.renameOnlyCount > 0
-    }
+    // MARK: - Body
 
     var body: some View {
-        NavigationStack {
+        VStack(alignment: .leading, spacing: 20) {
 
-            VStack(spacing: 0) {
+            // MARK: Header
+            HStack {
+                Text("変更内容の確認")
+                    .font(.title2)
+                    .bold()
 
-                // MARK: - Plan List
+                Spacer()
 
-                List(plans) { plan in
-                    ApplyConfirmationRowView(plan: plan)
+                Button("キャンセル") {
+                    onCancel()
                 }
-
-                Divider()
-
-                // MARK: - Diff Toggle
-
-                DiffToggleView()
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-
-                // MARK: - Summary
-
-                ChangeSummaryView(summary: summary)
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-
-                Divider()
-                    .padding(.top, 8)
-
-                // MARK: - Guard Area
-
-                VStack(alignment: .leading, spacing: 12) {
-
-                    if hasBlockingError {
-                        Label(
-                            "実行不可の項目があります。Apply はできません。",
-                            systemImage: "xmark.octagon.fill"
-                        )
-                        .foregroundColor(.red)
-                    } else if !hasAnyChange {
-                        Label(
-                            "変更される項目がありません。",
-                            systemImage: "info.circle.fill"
-                        )
-                        .foregroundColor(.secondary)
-                    } else {
-                        Toggle(
-                            "内容を確認し、実行結果を理解しました",
-                            isOn: $confirmed
-                        )
-                    }
-
-                    Button {
-                        showFinalAlert = true
-                    } label: {
-                        Text("一括 Apply を実行")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(
-                        hasBlockingError ||
-                        !hasAnyChange ||
-                        !confirmed
-                    )
-                }
-                .padding()
             }
-            .navigationTitle("Apply Confirmation")
-            .alert("一括 Apply の最終確認", isPresented: $showFinalAlert) {
 
-                Button("実行する", role: .destructive) {
-                    showExecution = true
-                }
+            // MARK: Summary
+            HStack(spacing: 16) {
 
-                Button("キャンセル", role: .cancel) {}
+                summaryItem(
+                    title: "変更",
+                    value: "\(changedPlans.count)"
+                )
 
-            } message: {
-                Text("""
-                以下の内容で一括 Apply を実行します。
-
-                ・移動あり: \(summary.moveCount) 件
-                ・名前変更のみ: \(summary.renameOnlyCount) 件
-                ・変更なし: \(summary.noChangeCount) 件
-
-                この操作は Undo で元に戻せます。
-                """)
+                summaryItem(
+                    title: "警告",
+                    value: "\(warningPlans.count)",
+                    isWarning: !warningPlans.isEmpty
+                )
             }
-            .navigationDestination(isPresented: $showExecution) {
-                ApplyExecutionView(plans: plans)
+
+            Divider()
+
+            // MARK: List
+            ScrollView {
+                LazyVStack(spacing: 12) {
+                    ForEach(changedPlans) { plan in
+                        ApplyConfirmationRowView(plan: plan)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
+            Divider()
+
+            // MARK: Actions
+            HStack {
+                Spacer()
+
+                Button("実行する") {
+                    onApply()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .disabled(changedPlans.isEmpty)
             }
         }
+        .padding(24)
+        .frame(minWidth: 640, minHeight: 520)
+        .background(
+            Color(nsColor: .windowBackgroundColor)
+        )
+    }
+
+    // MARK: - Helpers
+
+    private func summaryItem(
+        title: String,
+        value: String,
+        isWarning: Bool = false
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Text(value)
+                .font(.title3)
+                .bold()
+                .foregroundColor(isWarning ? .orange : .primary)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
     }
 }
