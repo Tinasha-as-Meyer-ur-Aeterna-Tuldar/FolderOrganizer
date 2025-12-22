@@ -1,20 +1,14 @@
 //
 // Views/Rename/Undo/UndoResultView.swift
-// Undo 実行結果表示ビュー
+// Undo 実行結果表示ビュー（共通 Row 使用）
 //
 import SwiftUI
 
-/// Undo 実行後の結果表示
-/// - 成功 / 失敗を一覧で表示
-/// - 操作の完了をユーザーに伝える
 struct UndoResultView: View {
 
     // MARK: - Inputs
 
-    /// Undo 結果一覧
     let results: [UndoResult]
-
-    /// 完了後に閉じる
     let onClose: () -> Void
 
 
@@ -34,7 +28,6 @@ struct UndoResultView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
 
-            // タイトル
             Text("Undo Result")
                 .font(.title2)
                 .bold()
@@ -42,12 +35,12 @@ struct UndoResultView: View {
             // サマリー
             HStack(spacing: 16) {
                 summaryItem(
-                    title: "成功",
+                    title: "復元成功",
                     count: successResults.count,
                     color: .green
                 )
                 summaryItem(
-                    title: "失敗",
+                    title: "復元失敗",
                     count: failureResults.count,
                     color: .orange
                 )
@@ -58,9 +51,9 @@ struct UndoResultView: View {
             // 成功一覧
             if !successResults.isEmpty {
                 Section {
-                    resultList(successResults, success: true)
+                    resultList(successResults)
                 } header: {
-                    Text("成功した Undo")
+                    Text("復元された項目")
                         .font(.headline)
                 }
             }
@@ -68,9 +61,9 @@ struct UndoResultView: View {
             // 失敗一覧
             if !failureResults.isEmpty {
                 Section {
-                    resultList(failureResults, success: false)
+                    resultList(failureResults)
                 } header: {
-                    Text("失敗した Undo")
+                    Text("復元できなかった項目")
                         .font(.headline)
                 }
             }
@@ -79,10 +72,9 @@ struct UndoResultView: View {
 
             Divider()
 
-            // 完了ボタン
             HStack {
                 Spacer()
-                Button("完了") {
+                Button("閉じる") {
                     onClose()
                 }
                 .keyboardShortcut(.defaultAction)
@@ -117,15 +109,14 @@ struct UndoResultView: View {
         )
     }
 
-    private func resultList(
-        _ items: [UndoResult],
-        success: Bool
-    ) -> some View {
+    private func resultList(_ items: [UndoResult]) -> some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 8) {
                 ForEach(items) { result in
-                    UndoResultRowView(
-                        result: result
+                    ExecutionResultRowView(
+                        success: result.success,
+                        title: result.applyResult.plan.originalName,
+                        errorMessage: result.error?.localizedDescription
                     )
                 }
             }
