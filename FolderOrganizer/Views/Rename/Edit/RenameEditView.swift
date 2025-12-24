@@ -1,6 +1,6 @@
 //
 // Views/Rename/Edit/RenameEditView.swift
-// 編集ビュー（上下移動対応）
+// 編集ビュー（キーボード操作完全対応）
 //
 
 import SwiftUI
@@ -9,6 +9,8 @@ struct RenameEditView: View {
 
     @ObservedObject var session: RenameSession
     let showSpaceMarkers: Bool
+
+    @FocusState private var isListFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,8 +27,16 @@ struct RenameEditView: View {
                         )
                 }
             }
+            .focused($isListFocused)
+            .onAppear {
+                DispatchQueue.main.async {
+                    isListFocused = true
+                }
+            }
         }
         .frame(minWidth: 420, minHeight: 320)
+        // Esc で閉じる
+        .keyboardShortcut(.escape, modifiers: [])
     }
 
     // MARK: - Header
