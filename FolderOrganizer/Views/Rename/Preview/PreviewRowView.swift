@@ -1,7 +1,9 @@
 //
 // Views/Rename/Preview/PreviewRowView.swift
-// 【新規】Preview 行表示（1行分）
+// Preview 表示行（RenamePreviewRowView の薄いラッパー）
+// Session の状態（Diff 表示）に追従
 //
+
 import SwiftUI
 
 struct PreviewRowView: View {
@@ -11,6 +13,8 @@ struct PreviewRowView: View {
     let isSelected: Bool
 
     let showSpaceMarkers: Bool
+    let isDiffVisible: Bool          // ← ★ 追加
+
     @Binding var flagged: Bool
 
     let onSelect: () -> Void
@@ -19,6 +23,7 @@ struct PreviewRowView: View {
         RenamePreviewRowView(
             item: item,
             showSpaceMarkers: showSpaceMarkers,
+            isDiffVisible: isDiffVisible,   // ← ★ ここが不足していた
             onEdit: onSelect
         )
     }
