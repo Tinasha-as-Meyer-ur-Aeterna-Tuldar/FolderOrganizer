@@ -1,87 +1,60 @@
 //
-// Views/Rename/Apply/ApplyResultView.swift
-// Apply 実行結果表示ビュー（共通 Row 使用）
+//  ApplyResultView.swift
+//  FolderOrganizer
 //
+
 import SwiftUI
 
 struct ApplyResultView: View {
 
-    // MARK: - Inputs
-
     let results: [ApplyResult]
-
-    /// Undo を開始する（成功分のみ渡す）
-    let onUndo: ([ApplyResult]) -> Void
-
-    /// 完了して閉じる
+    let rollbackInfo: RollbackInfo?
+    let onUndo: (RollbackInfo) -> Void
     let onClose: () -> Void
-
 
     // MARK: - Derived
 
-    private var successResults: [ApplyResult] {
-        results.filter { $0.success }
+    private var successCount: Int {
+        results.filter { $0.isSuccess }.count
     }
 
-    private var failureResults: [ApplyResult] {
-        results.filter { !$0.success }
+    private var failureCount: Int {
+        results.filter { !$0.isSuccess }.count
     }
-
 
     // MARK: - View
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
 
-            Text("Apply Result")
-                .font(.title2)
-                .bold()
+            Text("Apply 結果")
+                .font(.headline)
 
-            // サマリー
-            HStack(spacing: 16) {
-                summaryItem(
-                    title: "成功",
-                    count: successResults.count,
-                    color: .green
-                )
-                summaryItem(
-                    title: "失敗",
-                    count: failureResults.count,
-                    color: .orange
-                )
-            }
+            Text("成功: \(successCount) 件 / 失敗: \(failureCount) 件")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             Divider()
 
-            // 成功一覧
-            if !successResults.isEmpty {
-                Section {
-                    resultList(successResults)
-                } header: {
-                    Text("適用された項目")
-                        .font(.headline)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(results.indices, id: \.self) { index in
+                        ApplyResultRowView(
+                            result: results[index],   // ← 先
+                            index: index              // ← 後
+                        )
+                    }
                 }
             }
-
-            // 失敗一覧
-            if !failureResults.isEmpty {
-                Section {
-                    resultList(failureResults)
-                } header: {
-                    Text("失敗した項目")
-                        .font(.headline)
-                }
-            }
-
-            Spacer()
 
             Divider()
 
             HStack {
-                Button("Undo") {
-                    onUndo(successResults)
+                if let rollbackInfo {
+                    Button("Undo") {
+                        onUndo(rollbackInfo)
+                    }
                 }
-                .disabled(successResults.isEmpty)
 
                 Spacer()
 
@@ -91,47 +64,7 @@ struct ApplyResultView: View {
                 .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(20)
-        .frame(minWidth: 520, minHeight: 360)
-    }
-
-
-    // MARK: - Components
-
-    private func summaryItem(
-        title: String,
-        count: Int,
-        color: Color
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
-
-            Text("\(count)")
-                .font(.title3)
-                .bold()
-                .foregroundColor(color)
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
-    }
-
-    private func resultList(_ items: [ApplyResult]) -> some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 8) {
-                ForEach(items) { result in
-                    ExecutionResultRowView(
-                        success: result.success,
-                        title: result.plan.targetName,
-                        errorMessage: result.error?.localizedDescription
-                    )
-                }
-            }
-            .padding(.vertical, 4)
-        }
+        .padding(16)
+        .frame(minWidth: 420)
     }
 }

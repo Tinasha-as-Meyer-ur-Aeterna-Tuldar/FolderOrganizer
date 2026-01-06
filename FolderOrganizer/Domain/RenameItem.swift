@@ -1,13 +1,32 @@
-// Domain/RenameItem.swift
+//
+//  RenameItem.swift
+//  FolderOrganizer
+//
+
 import Foundation
 
-/// リネーム対象 1 件
-struct RenameItem: Identifiable, Hashable {
-    let id: UUID
-    let original: String
-    let normalized: String
+struct RenameItem: Identifiable, Hashable, Codable {
+
+    // MARK: - Identity
+    var id: UUID
+
+    // MARK: - Core
+    var original: String
+    var normalized: String
     var flagged: Bool
 
+    // MARK: - Computed
+    var finalName: String { normalized }
+
+    var isSubtitle: Bool {
+        TextClassifier.isSubtitle(normalized)
+    }
+
+    var isPotentialSubtitle: Bool {
+        TextClassifier.isPotentialSubtitle(normalized)
+    }
+
+    // MARK: - Init
     init(
         id: UUID = UUID(),
         original: String,
@@ -18,5 +37,13 @@ struct RenameItem: Identifiable, Hashable {
         self.original = original
         self.normalized = normalized
         self.flagged = flagged
+    }
+
+    // MARK: - Codable
+    enum CodingKeys: String, CodingKey {
+        case id
+        case original
+        case normalized
+        case flagged
     }
 }

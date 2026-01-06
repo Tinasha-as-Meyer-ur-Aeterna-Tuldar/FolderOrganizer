@@ -1,69 +1,78 @@
-// Views/Rename/RenameDetailView.swift
+//
+//  RenameDetailView.swift
+//  FolderOrganizer
+//
+//  1 件の RenamePlan を詳細表示・確認する View
+//
 
 import SwiftUI
 
 struct RenameDetailView: View {
 
-    let items: [RenameItem]
-    let initialIndex: Int
+    // MARK: - Input
 
-    @State private var selectedIndex: Int
+    let plan: RenamePlan
+    let onClose: () -> Void
 
-    init(items: [RenameItem], initialIndex: Int) {
-        self.items = items
-        self.initialIndex = initialIndex
-        _selectedIndex = State(initialValue: initialIndex)
-    }
+    // MARK: - Body
 
     var body: some View {
-        VStack {
-            header
+        VStack(alignment: .leading, spacing: 16) {
 
-            List {
-                ForEach(items.indices, id: \.self) { index in
-                    row(for: index)
+            // ヘッダー
+            HStack {
+                Text("詳細")
+                    .font(.headline)
+
+                Spacer()
+
+                Button("閉じる") {
+                    onClose()
                 }
             }
-            .listStyle(.plain)
-        }
-        .frame(minWidth: 520, minHeight: 420)
-    }
 
-    private var header: some View {
-        HStack {
-            Button("↑") { moveSelection(-1) }
-            Button("↓") { moveSelection(1) }
+            Divider()
+
+            // 元の名前
+            VStack(alignment: .leading, spacing: 4) {
+                Text("元の名前")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(plan.originalURL.lastPathComponent)
+                    .font(.system(size: 13, design: .monospaced))
+            }
+
+            // 変更後の名前
+            VStack(alignment: .leading, spacing: 4) {
+                Text("変更後の名前")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text(plan.destinationURL.lastPathComponent)
+                    .font(.system(size: 13, design: .monospaced))
+            }
+
+            Divider()
+
+            // フルパス情報
+            VStack(alignment: .leading, spacing: 6) {
+                Text("パス")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text("元: \(plan.originalURL.path)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+
+                Text("先: \(plan.destinationURL.path)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
 
             Spacer()
-
-            Text("\(selectedIndex + 1) / \(items.count)")
-                .foregroundStyle(.secondary)
         }
         .padding()
-    }
-
-    private func row(for index: Int) -> some View {
-        let item = items[index]
-
-        return HStack {
-            Text(item.original)
-                .lineLimit(1)
-            Spacer()
-        }
-        .contentShape(Rectangle())
-        .background(
-            index == selectedIndex
-                ? Color.accentColor.opacity(0.15)
-                : Color.clear
-        )
-        .onTapGesture {
-            selectedIndex = index
-        }
-    }
-
-    private func moveSelection(_ delta: Int) {
-        let next = selectedIndex + delta
-        guard items.indices.contains(next) else { return }
-        selectedIndex = next
+        .frame(minWidth: 520, minHeight: 300)
     }
 }

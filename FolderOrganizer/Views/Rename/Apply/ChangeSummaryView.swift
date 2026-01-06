@@ -1,8 +1,14 @@
+//
+//  ChangeSummaryView.swift
+//  FolderOrganizer
+//
+
 import SwiftUI
 
+/// Apply 前に表示する変更サマリー View
 struct ChangeSummaryView: View {
 
-    let summary: RenameChangeSummary
+    let summary: RenameExportSummary
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -10,20 +16,28 @@ struct ChangeSummaryView: View {
             Text("変更サマリー")
                 .font(.headline)
 
-            summaryRow("総件数", summary.total)
-            summaryRow("移動あり", summary.moveCount)
-            summaryRow("名前変更のみ", summary.renameOnlyCount)
-            summaryRow("変更なし", summary.noChangeCount)
+            // --- 基本情報 ---
+            summaryRow("フラグ付き", summary.flaggedCount)
+            summaryRow("手動修正あり", summary.userEditedCount)
 
             Divider()
 
+            // --- 警告 / エラー ---
             summaryRow("警告あり", summary.warningCount, color: .orange)
-            summaryRow("実行不可", summary.blockingCount, color: .red)
+            summaryRow("エラーあり", summary.errorCount, color: .red)
+
+            if summary.hasBlockingErrors {
+                Text("⚠️ エラーがあるため Apply できません")
+                    .font(.footnote)
+                    .foregroundColor(.red)
+            }
         }
         .padding()
         .background(.regularMaterial)
         .cornerRadius(8)
     }
+
+    // MARK: - Row
 
     private func summaryRow(
         _ title: String,
@@ -35,7 +49,7 @@ struct ChangeSummaryView: View {
             Spacer()
             Text("\(value)")
                 .foregroundColor(color)
-                .fontWeight(.semibold)
+                .monospacedDigit()
         }
     }
 }

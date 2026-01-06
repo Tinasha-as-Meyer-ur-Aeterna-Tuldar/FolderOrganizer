@@ -1,19 +1,26 @@
-// Views/Plan/RenamePlanRowView.swift
+//
+//  RenamePlanRowView.swift
+//  FolderOrganizer
+//
 
 import SwiftUI
 
 struct RenamePlanRowView: View {
 
     let plan: RenamePlan
-    let showSpaceMarkers: Bool
+    let showSpaceMarkers: Bool   // 呼び出し元都合なので保持でOK
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
 
+            // 元名 / 変更後名
+            let originalName = plan.originalName
+            let modifiedName = plan.destinationURL.lastPathComponent
+
             // 差分生成
             let tokens = DiffBuilder.build(
-                original: plan.originalName,
-                modified: plan.targetName
+                original: originalName,
+                modified: modifiedName
             )
 
             // 差分表示
@@ -22,12 +29,15 @@ struct RenamePlanRowView: View {
                 font: .system(size: 14, weight: .semibold, design: .monospaced)
             )
 
-            if !plan.warnings.isEmpty {
+            // MARK: - Warning 表示
+            let warnings = plan.normalizeResult.warnings
+
+            if !warnings.isEmpty {
                 HStack(spacing: 4) {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
 
-                    Text("\(plan.warnings.count) warning")
+                    Text("\(warnings.count) warning")
                         .font(.caption)
                         .foregroundColor(.orange)
                 }

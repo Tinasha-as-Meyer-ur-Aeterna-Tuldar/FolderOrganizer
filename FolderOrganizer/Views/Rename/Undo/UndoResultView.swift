@@ -1,126 +1,82 @@
 //
-// Views/Rename/Undo/UndoResultView.swift
-// Undo 実行結果表示ビュー（共通 Row 使用）
+//  UndoResultView.swift
+//  FolderOrganizer
 //
+
 import SwiftUI
 
 struct UndoResultView: View {
 
-    // MARK: - Inputs
-
-    let results: [UndoResult]
+    let undoResults: [UndoResult]
+    let rollbackInfo: RollbackInfo
     let onClose: () -> Void
-
 
     // MARK: - Derived
 
-    private var successResults: [UndoResult] {
-        results.filter { $0.success }
+    /// 成功した Undo の index 一覧
+    private var successIndexes: [Int] {
+        undoResults.enumerated().compactMap { index, result in
+            if case .success = result {
+                return index
+            }
+            return nil
+        }
     }
 
-    private var failureResults: [UndoResult] {
-        results.filter { !$0.success }
+    /// 失敗した Undo（index + error）
+    private var failureErrors: [(Int, Error)] {
+        undoResults.enumerated().compactMap { index, result in
+            if case .failure(let error) = result {
+                return (index, error)
+            }
+            return nil
+        }
     }
 
+    private var successCount: Int { successIndexes.count }
+    private var failureCount: Int { failureErrors.count }
 
     // MARK: - View
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 12) {
 
-            Text("Undo Result")
-                .font(.title2)
-                .bold()
+            Text("Undo 結果")
+                .font(.headline)
 
-            // サマリー
-            HStack(spacing: 16) {
-                summaryItem(
-                    title: "復元成功",
-                    count: successResults.count,
-                    color: .green
-                )
-                summaryItem(
-                    title: "復元失敗",
-                    count: failureResults.count,
-                    color: .orange
-                )
-            }
+            Text("成功: \(successCount) 件 / 失敗: \(failureCount) 件")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             Divider()
 
-            // 成功一覧
-            if !successResults.isEmpty {
-                Section {
-                    resultList(successResults)
-                } header: {
-                    Text("復元された項目")
-                        .font(.headline)
+            VStack(alignment: .leading, spacing: 8) {
+
+                // 成功行（RollbackInfo から Move を引く）
+                ForEach(successIndexes, id: \.self) { index in
+                    UndoResultRowView(
+                        index: index,
+                        move: rollbackInfo.moves[index]
+                    )
+                }
+
+                // 失敗行
+                ForEach(failureErrors, id: \.0) { index, error in
+                    UndoResultErrorRowView(
+                        index: index,
+                        error: error
+                    )
                 }
             }
-
-            // 失敗一覧
-            if !failureResults.isEmpty {
-                Section {
-                    resultList(failureResults)
-                } header: {
-                    Text("復元できなかった項目")
-                        .font(.headline)
-                }
-            }
-
-            Spacer()
 
             Divider()
 
             HStack {
                 Spacer()
-                Button("閉じる") {
-                    onClose()
-                }
-                .keyboardShortcut(.defaultAction)
+                Button("閉じる", action: onClose)
+                    .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(20)
-        .frame(minWidth: 520, minHeight: 360)
-    }
-
-
-    // MARK: - Components
-
-    private func summaryItem(
-        title: String,
-        count: Int,
-        color: Color
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
-
-            Text("\(count)")
-                .font(.title3)
-                .bold()
-                .foregroundColor(color)
-        }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
-    }
-
-    private func resultList(_ items: [UndoResult]) -> some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 8) {
-                ForEach(items) { result in
-                    ExecutionResultRowView(
-                        success: result.success,
-                        title: result.applyResult.plan.originalName,
-                        errorMessage: result.error?.localizedDescription
-                    )
-                }
-            }
-            .padding(.vertical, 4)
-        }
+        .padding()
     }
 }

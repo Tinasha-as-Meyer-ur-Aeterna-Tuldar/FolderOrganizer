@@ -1,44 +1,63 @@
 //
-// Views/Rename/Preview/PreviewListContentView.swift
-// Preview 一覧の中身（表示専用）
-// STEP C: 編集状態への遷移のみ担当
+//  PreviewListContentView.swift
+//  FolderOrganizer
+//
+//  プレビュー一覧（常時表示）
+//  編集オーバーレイは ZStack で上に重ねる（STEP C）
 //
 
 import SwiftUI
 
 struct PreviewListContentView: View {
 
+    // MARK: - Session
     @ObservedObject var session: RenameSession
+
+    // MARK: - 表示オプション
     let showSpaceMarkers: Bool
 
+    /// Diff 表示 ON / OFF（STEP D でトグル化予定）
+    private let isDiffVisible: Bool = true
+
+    // MARK: - Body
     var body: some View {
-        List(selection: $session.selectedID) {
-            previewRows
-        }
-        .listStyle(.plain)
-    }
+        ZStack {
 
-    // MARK: - Row Builder
-    @ViewBuilder
-    private var previewRows: some View {
-        ForEach(session.items) { item in
-            RenamePreviewRowView(
-                item: item,
-                onEdit: {
-                    session.selectedID = item.id
-                    session.isEditing = true
+            // =========================
+            // 一覧（常に表示）
+            // =========================
+            List(selection: $session.selectedID) {
+                ForEach(session.items) { item in
+                    RenamePreviewRowView(
+                        item: item,
+                        isDiffVisible: isDiffVisible,
+                        onEdit: {
+                            // View 更新中の状態変更を避ける
+                            DispatchQueue.main.async {
+                                session.selectedID = item.id
+                                session.startEditing()
+                            }
+                        }
+                    )
+                    .tag(item.id)
+                    .listRowBackground(rowBackground(for: item))
                 }
-            )
-            .tag(item.id)
-            .id(item.id)
-            .listRowBackground(rowBackground(for: item))
+            }
+            .listStyle(.plain)
+
+            // =========================
+            // 編集オーバーレイ（STEP C）
+            // =========================
+            if session.isEditing {
+                RenameEditView(session: session)
+            }
         }
     }
 
-    // MARK: - Background 判定
+    // MARK: - Row Background
     private func rowBackground(for item: RenameItem) -> Color {
         session.selectedID == item.id
-        ? Color.accentColor.opacity(0.15)
-        : Color.clear
+            ? Color.accentColor.opacity(0.15)
+            : Color.clear
     }
 }

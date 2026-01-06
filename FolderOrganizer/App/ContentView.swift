@@ -1,19 +1,76 @@
-// App/ContentView.swift
+//
+//  ContentView.swift
+//  FolderOrganizer
+//
+
 import SwiftUI
 
-/// アプリのルート View
 struct ContentView: View {
 
-    @StateObject private var session = RenameSession(
-        items: [
-            RenameItem(original: "01_test.txt", normalized: "01_test.txt"),
-            RenameItem(original: "02_sample.txt", normalized: "02_sample.txt", flagged: true),
-            RenameItem(original: "03_demo.txt", normalized: "03_demo.txt")
-        ]
-    )
+    @State private var flowState: RenameFlowState = .preview
+    @State private var plans: [RenamePlan] = []
+
+    private let applyService: RenameApplyService = DefaultRenameApplyService()
+    private let undoService: RenameUndoService = DefaultRenameUndoService()
 
     var body: some View {
-        RenamePreviewListView(session: session)
-            .frame(minWidth: 480, minHeight: 360)
+        VStack {
+            switch flowState {
+
+            // MARK: - Preview
+            case .preview:
+                Button("Apply") {
+                    startApply()
+                }
+
+            // MARK: - Applying
+            case .applying:
+                ProgressView("Apply 実行中…")
+
+            // MARK: - Applied
+            case .applied(let results):
+                RenameApplyUndoFlowView(
+                    results: results,
+                    onCancel: {
+                        flowState = .preview
+                    },
+                    onStartUndo: { rollback in
+                        startUndo(rollback: rollback)
+                    },
+                    onFinish: {
+                        flowState = .preview
+                    }
+                )
+
+            // MARK: - Undoing
+            case .undoing:
+                ProgressView("Undo 実行中…")
+            }
+        }
+        .frame(minWidth: 800, minHeight: 600)
+    }
+
+    // MARK: - Apply
+
+    private func startApply() {
+        flowState = .applying
+
+        applyService.apply(plans: plans) { results in
+            DispatchQueue.main.async {
+                flowState = .applied(results: results)
+            }
+        }
+    }
+
+    // MARK: - Undo
+
+    private func startUndo(rollback: RollbackInfo) {
+        flowState = .undoing
+
+        undoService.undo(rollback: rollback) { _ in
+            DispatchQueue.main.async {
+                flowState = .preview
+            }
+        }
     }
 }

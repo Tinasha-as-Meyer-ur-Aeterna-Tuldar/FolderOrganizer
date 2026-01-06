@@ -1,12 +1,12 @@
 //
-// Views/Rename/Preview/DryRunPreviewView.swift
+//  DryRunPreviewView.swift
+//  FolderOrganizer
 //
+
 import SwiftUI
 import Combine
 
 /// DryRun（実行前プレビュー）画面
-/// - RenamePlan を生成し
-/// - ApplyConfirmationView に渡す責任を持つ
 struct DryRunPreviewView: View {
 
     // MARK: - Dependencies
@@ -24,31 +24,24 @@ struct DryRunPreviewView: View {
         ApplyConfirmationView(
             plans: plans,
             onApply: {
-                // 👉 ここは次のステップで ApplyExecutionView へ
                 print("Apply tapped")
             },
             onCancel: {
-                // 👉 親 View が dismiss する想定
                 print("Cancel tapped")
             }
         )
         .onAppear {
             rebuildPlans()
         }
-        // サブタイトル判定変更
-        .onReceive(decisionStore.$subtitleDecisions) { _ in
-            rebuildPlans()
-        }
-        // Author 判定変更
-        .onReceive(decisionStore.$authorDecisions) { _ in
+        .onReceive(decisionStore.decisionsPublisher) {
             rebuildPlans()
         }
     }
 
-    // MARK: - Build plans
+    // MARK: - Private
     private func rebuildPlans() {
-        plans = itemURLs.map { url in
-            engine.generatePlan(for: url)
+        plans = itemURLs.map {
+            engine.generatePlan(for: $0)
         }
     }
 }

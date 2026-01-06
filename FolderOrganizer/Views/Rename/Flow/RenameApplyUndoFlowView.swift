@@ -1,106 +1,85 @@
 //
-// Views/Rename/Flow/RenameApplyUndoFlowView.swift
-// Apply → Result → Undo(Confirm/Exec/Result) → 戻る（再Apply可能）
+//  RenameApplyUndoFlowView.swift
+//  FolderOrganizer
 //
+
 import SwiftUI
 
 struct RenameApplyUndoFlowView: View {
 
-    // MARK: - Inputs
+    // MARK: - Input
+    let results: [ApplyResult]
+    let onCancel: () -> Void
+    let onStartUndo: (RollbackInfo) -> Void
+    let onFinish: () -> Void
 
-    /// Apply 対象
-    let plans: [RenamePlan]
+    // MARK: - Derived
 
-    /// Domain / Logic 側サービス（注入）
-    let applyService: RenameApplyService
-    let undoService: DefaultRenameUndoService
+    /// 成功した ApplyResult から RollbackInfo を再構築
+    private var rollbackInfo: RollbackInfo {
+        let moves: [RollbackInfo.Move] = results.compactMap { result in
+            switch result {
+            case .success(_, _, let rollback):
+                return rollback.moves
+            case .failure:
+                return nil
+            }
+        }
+        .flatMap { $0 }
 
-    /// フロー全体を閉じる（Preview に戻る等）
-    let onClose: () -> Void
-
-
-    // MARK: - Flow State
-
-    private enum Step {
-        case applyExecution
-        case applyResult
-        case undoConfirm
-        case undoExecution
-        case undoResult
+        return RollbackInfo(moves: moves)
     }
 
-    @State private var step: Step = .applyExecution
-
-    @State private var applyResults: [ApplyResult] = []
-    @State private var undoResults: [UndoResult] = []
-
+    /// Undo 可能な成功結果があるか
+    private var hasAnySuccess: Bool {
+        results.contains {
+            if case .success = $0 { return true }
+            return false
+        }
+    }
 
     // MARK: - View
-
     var body: some View {
-        switch step {
+        VStack(spacing: 16) {
 
-        case .applyExecution:
-            ApplyExecutionView(
-                plans: plans,
-                applyService: applyService,
-                onFinish: { results in
-                    applyResults = results
-                    step = .applyResult
-                },
-                onCancel: {
-                    onClose()
-                }
-            )
+            // Header
+            HStack {
+                Text("Apply 結果")
+                    .font(.headline)
+                Spacer()
+                Button("閉じる", action: onFinish)
+                    .keyboardShortcut(.defaultAction)
+            }
 
-        case .applyResult:
-            ApplyResultView(
-                results: applyResults,
-                onUndo: { successResults in
-                    // Undo は成功分だけ渡す（設計どおり）
-                    applyResults = successResults
-                    step = .undoConfirm
-                },
-                onClose: {
-                    // ここで閉じると「Apply完了でPreviewへ戻る」
-                    onClose()
-                }
-            )
+            Divider()
 
-        case .undoConfirm:
-            UndoConfirmationView(
-                applyResults: applyResults,
-                onConfirm: {
-                    step = .undoExecution
-                },
-                onCancel: {
-                    // ApplyResult に戻す（再確認できる）
-                    step = .applyResult
+            // Result list
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(results.indices, id: \.self) { index in
+                        ApplyResultRowView(
+                            result: results[index],
+                            index: index
+                        )
+                    }
                 }
-            )
+            }
 
-        case .undoExecution:
-            UndoExecutionView(
-                applyResults: applyResults,
-                undoService: undoService,
-                onFinish: { results in
-                    undoResults = results
-                    step = .undoResult
-                },
-                onCancel: {
-                    // キャンセル時は ApplyResult に戻す
-                    step = .applyResult
-                }
-            )
+            Divider()
 
-        case .undoResult:
-            UndoResultView(
-                results: undoResults,
-                onClose: {
-                    // Undo完了後：ApplyResult に戻す（再Apply 可能）
-                    step = .applyResult
+            // Actions
+            HStack {
+                Button("キャンセル", action: onCancel)
+
+                Spacer()
+
+                Button("Undo 実行") {
+                    onStartUndo(rollbackInfo)
                 }
-            )
+                .disabled(!hasAnySuccess)
+            }
         }
+        .padding(20)
+        .frame(minWidth: 420)
     }
 }

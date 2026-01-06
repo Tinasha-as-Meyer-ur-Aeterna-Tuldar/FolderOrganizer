@@ -1,3 +1,8 @@
+//
+//  RenameListView.swift
+//  FolderOrganizer
+//
+
 import SwiftUI
 
 struct RenameListView: View {
@@ -6,6 +11,7 @@ struct RenameListView: View {
 
     var body: some View {
         List {
+            // ✅ Binding ではなく値で回す
             ForEach(session.items) { item in
                 Text(item.original)
             }

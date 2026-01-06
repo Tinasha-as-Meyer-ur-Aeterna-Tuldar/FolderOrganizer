@@ -1,6 +1,12 @@
+//
+//  MonospaceTextEditor.swift
+//  FolderOrganizer
+//
+
 import SwiftUI
 
 struct MonospaceTextEditor: View {
+
     @Binding var text: String
     var onCommit: () -> Void
     var onCancel: () -> Void
@@ -9,8 +15,8 @@ struct MonospaceTextEditor: View {
         TextEditor(text: $text)
             .font(.system(size: 16, design: .monospaced))
             .foregroundColor(.black)
-            .scrollContentBackground(.hidden)   // ← TextEditor の内部背景を消す
-            .background(Color.white)            // ← 自前の白背景を適用
+            .scrollContentBackground(.hidden)   // TextEditor のデフォルト背景を消す
+            .background(Color.white)             // 独自背景
             .padding(8)
             .cornerRadius(8)
             .overlay(
@@ -20,20 +26,30 @@ struct MonospaceTextEditor: View {
             .onAppear {
                 moveCursorToEnd()
             }
-            // Enter
-            .onKeyPress(.return) {      // 引数なし                onCommit()
-                return .handled
+
+            // Enterキー → 確定
+            .onKeyPress(.return) {
+                onCommit()
+                return KeyPress.Result.handled
             }
-            // Esc
-            .onKeyPress(.escape) {      // 引数なし                onCancel()
-                return .handled
+
+            // Escキー → キャンセル
+            .onKeyPress(.escape) {
+                onCancel()
+                return KeyPress.Result.handled
             }
     }
 
+    // MARK: - Cursor Control
+
     private func moveCursorToEnd() {
         DispatchQueue.main.async {
-            NSApp.keyWindow?.firstResponder?
-                .tryToPerform(#selector(NSTextView.moveToEndOfDocument(_:)), with: nil)
+            NSApp.keyWindow?
+                .firstResponder?
+                .tryToPerform(
+                    #selector(NSTextView.moveToEndOfDocument(_:)),
+                    with: nil
+                )
         }
     }
 }

@@ -1,4 +1,9 @@
-// Views/Plan/RenamePlanDetailView.swift
+//
+//  RenamePlanDetailView.swift
+//  FolderOrganizer
+//
+//  RenamePlan の詳細表示
+//
 
 import SwiftUI
 
@@ -14,34 +19,22 @@ struct RenamePlanDetailView: View {
                 renameSection
             }
 
-            // MARK: - Detected Information
-            Section("Detected Information") {
-                LabeledContent("Author") {
-                    Text(plan.detectedAuthor ?? "—")
-                }
-            }
-
-            // MARK: - Warnings
-            if !plan.warnings.isEmpty {
+            // MARK: - Warnings（NormalizeResult 由来）
+            if !plan.normalizeResult.warnings.isEmpty {
                 Section("Warnings") {
-                    ForEach(plan.warnings, id: \.self) { warning in
-                        Text(warning.message)
+                    ForEach(plan.normalizeResult.warnings.indices, id: \.self) { index in
+                        Text(plan.normalizeResult.warnings[index])
                             .foregroundColor(.orange)
                     }
                 }
             }
         }
+        .padding()
     }
 
-    // MARK: - Rename Section（ViewBuilder外でロジック処理）
+    // MARK: - Rename Section
     private var renameSection: some View {
-
-        let tokens = DiffBuilder.build(
-            original: plan.originalName,
-            modified: plan.targetName
-        )
-
-        return VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
 
             LabeledContent("Before") {
                 Text(plan.originalName)
@@ -49,16 +42,14 @@ struct RenamePlanDetailView: View {
             }
 
             LabeledContent("After") {
-                DiffTextView(
-                    tokens: tokens,
-                    font: .system(
-                        size: 13,
-                        weight: .semibold,
-                        design: .monospaced
-                    )
-                )
+                Text(destinationName)
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private var destinationName: String {
+        plan.destinationURL.lastPathComponent
     }
 }

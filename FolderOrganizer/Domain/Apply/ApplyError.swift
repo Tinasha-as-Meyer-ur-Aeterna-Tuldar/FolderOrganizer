@@ -1,22 +1,24 @@
+//
+//  Domain/Apply/ApplyError.swift
+//  FolderOrganizer
+//
+
 import Foundation
 
-enum ApplyError: LocalizedError {
-
-    case destinationAlreadyExists(URL)
+/// Apply の失敗理由（Hashable にして ApplyResult を自動合成できるように）
+enum ApplyError: Hashable, LocalizedError {
     case failedToCreateDirectory(URL)
-    case failedToMoveItem(from: URL, to: URL, underlying: Error)
-    case unknown(Error)
+    case destinationAlreadyExists(URL)
+    case fileMoveFailed(from: URL, to: URL, message: String)
 
     var errorDescription: String? {
         switch self {
-        case .destinationAlreadyExists(let url):
-            return "移動先が既に存在します: \(url.lastPathComponent)"
         case .failedToCreateDirectory(let url):
-            return "フォルダを作成できませんでした: \(url.lastPathComponent)"
-        case .failedToMoveItem(_, _, let underlying):
-            return "移動に失敗しました: \(underlying.localizedDescription)"
-        case .unknown(let error):
-            return error.localizedDescription
+            return "フォルダ作成に失敗しました: \(url.path)"
+        case .destinationAlreadyExists(let url):
+            return "既に存在するため適用できません: \(url.lastPathComponent)"
+        case .fileMoveFailed(let from, let to, let message):
+            return "移動に失敗しました: \(from.lastPathComponent) → \(to.lastPathComponent)\n\(message)"
         }
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-struct ContextInfo {
+struct ContextInfo: Hashable {
     let currentParent: URL
     let isUnderAuthorFolder: Bool
     let detectedAuthorFolderName: String?

@@ -1,25 +1,47 @@
+//
+//  UndoError.swift
+//  FolderOrganizer
+//
+//  Undo（rollback）失敗理由の定義
+//
+
 import Foundation
 
-enum UndoError: LocalizedError {
+/// Undo（rollback）時のエラー
+///
+/// 設計方針:
+/// - Domain 層の純粋なエラー型
+/// - View / Service で共通に扱える
+/// - LocalizedError に準拠（UI 表示用）
+enum UndoError: LocalizedError, Hashable {
 
-    case originalLocationAlreadyExists(URL)
-    case appliedItemMissing(URL)
-    case failedToMoveItem(from: URL, to: URL, underlying: Error)
+    /// Undo できる情報が存在しない
     case notApplicable
-    case unknown(Error)
+
+    /// Apply 後の対象が見つからない
+    case appliedItemMissing(URL)
+
+    /// 元の場所にすでに別の項目が存在する
+    case originalLocationAlreadyExists(URL)
+
+    /// ファイル操作に失敗
+    case fileOperationFailed(message: String)
+
+    // MARK: - LocalizedError
 
     var errorDescription: String? {
         switch self {
-        case .originalLocationAlreadyExists(let url):
-            return "元の場所に既に同名の項目があります: \(url.lastPathComponent)"
-        case .appliedItemMissing(let url):
-            return "元に戻す対象が見つかりません: \(url.lastPathComponent)"
-        case .failedToMoveItem(_, _, let underlying):
-            return "元に戻せませんでした: \(underlying.localizedDescription)"
         case .notApplicable:
-            return "この項目は Undo 対象ではありません"
-        case .unknown(let error):
-            return error.localizedDescription
+            return "Undo できる情報がありません。"
+
+        case .appliedItemMissing(let url):
+            return "Undo 対象が見つかりません: \(url.path)"
+
+        case .originalLocationAlreadyExists(let url):
+            return "元の場所に既に項目があります: \(url.path)"
+
+        case .fileOperationFailed(let message):
+            return "Undo に失敗しました: \(message)"
         }
     }
 }

@@ -1,44 +1,24 @@
-// Logic/DiffBuilder.swift
+//
+//  Logic/DiffBuilder.swift
+//  FolderOrganizer
+//
+//  まずは最小の差分表示：
+//  same / removed / added の 3 トークン（将来 LCS に差し替え可能）
+//
 
 import Foundation
 
 enum DiffBuilder {
 
-    /// original と modified を比較し、DiffToken 配列を生成
     static func build(original: String, modified: String) -> [DiffToken] {
-
-        let originalChars = Array(original)
-        let modifiedChars = Array(modified)
-
-        let maxCount = max(originalChars.count, modifiedChars.count)
-        var result: [DiffToken] = []
-
-        for i in 0..<maxCount {
-            let o = i < originalChars.count ? originalChars[i] : nil
-            let m = i < modifiedChars.count ? modifiedChars[i] : nil
-
-            switch (o, m) {
-            case let (o?, m?) where o == m:
-                result.append(
-                    DiffToken(
-                        text: String(m),
-                        kind: .same
-                    )
-                )
-
-            case let (_, m?):
-                result.append(
-                    DiffToken(
-                        text: String(m),
-                        kind: .replaced
-                    )
-                )
-
-            default:
-                break
-            }
+        guard original != modified else {
+            return [DiffToken(text: original, kind: .same)]
         }
 
-        return result
+        return [
+            DiffToken(text: original, kind: .removed),
+            DiffToken(text: " → ", kind: .same),
+            DiffToken(text: modified, kind: .added)
+        ]
     }
 }

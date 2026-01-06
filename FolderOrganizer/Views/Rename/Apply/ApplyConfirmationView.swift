@@ -1,52 +1,40 @@
 //
-// Views/Rename/Apply/ApplyConfirmationView.swift
+//  ApplyConfirmationView.swift
+//  FolderOrganizer
 //
+
 import SwiftUI
 
-/// リネーム適用前の最終確認画面
-///
-/// - 変更内容（Diff）
-/// - 件数サマリー
-/// - 警告の有無
-/// を確認し、実行可否を判断する
+/// Apply 実行前の最終確認画面
 struct ApplyConfirmationView: View {
 
+    // MARK: - Inputs
     let plans: [RenamePlan]
-
     let onApply: () -> Void
     let onCancel: () -> Void
 
     // MARK: - Derived
 
+    /// 実際に名前が変わるプランのみ
     private var changedPlans: [RenamePlan] {
-        plans.filter { $0.originalName != $0.targetName }
+        plans.filter {
+            $0.originalName != $0.destinationURL.lastPathComponent
+        }
     }
 
+    /// Warning を含むプラン
     private var warningPlans: [RenamePlan] {
-        plans.filter { !$0.warnings.isEmpty }
+        plans.filter {
+            !$0.normalizeResult.warnings.isEmpty
+        }
     }
 
-    // MARK: - Body
-
+    // MARK: - View
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 16) {
 
-            // MARK: Header
-            HStack {
-                Text("変更内容の確認")
-                    .font(.title2)
-                    .bold()
-
-                Spacer()
-
-                Button("キャンセル") {
-                    onCancel()
-                }
-            }
-
-            // MARK: Summary
+            // Summary
             HStack(spacing: 16) {
-
                 summaryItem(
                     title: "変更",
                     value: "\(changedPlans.count)"
@@ -61,58 +49,51 @@ struct ApplyConfirmationView: View {
 
             Divider()
 
-            // MARK: List
+            // Plan List
             ScrollView {
-                LazyVStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 0) {
                     ForEach(changedPlans) { plan in
                         ApplyConfirmationRowView(plan: plan)
+                        Divider()
                     }
                 }
-                .padding(.vertical, 4)
             }
 
             Divider()
 
-            // MARK: Actions
+            // Actions
             HStack {
+                Button("キャンセル") {
+                    onCancel()
+                }
+
                 Spacer()
 
-                Button("実行する") {
+                Button("Apply 実行") {
                     onApply()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(changedPlans.isEmpty)
+                .keyboardShortcut(.defaultAction)
             }
         }
-        .padding(24)
-        .frame(minWidth: 640, minHeight: 520)
-        .background(
-            Color(nsColor: .windowBackgroundColor)
-        )
+        .padding()
+        .frame(minWidth: 520, minHeight: 420)
     }
 
-    // MARK: - Helpers
-
+    // MARK: - Summary Item
+    @ViewBuilder
     private func summaryItem(
         title: String,
         value: String,
         isWarning: Bool = false
     ) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             Text(value)
-                .font(.title3)
-                .bold()
-                .foregroundColor(isWarning ? .orange : .primary)
+                .font(.headline)
+                .foregroundStyle(isWarning ? .orange : .primary)
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
     }
 }

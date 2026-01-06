@@ -1,14 +1,19 @@
+//
+// ApplyResult.swift
+//
+
 import Foundation
 
-struct ApplyResult: Identifiable {
+enum ApplyResult {
+    case success(
+        plan: RenamePlan,
+        destinationURL: URL,
+        rollback: RollbackInfo
+    )
+    case failure(error: Error)
 
-    let id = UUID()
-
-    let plan: RenamePlan
-
-    let success: Bool
-
-    let appliedURL: URL?
-
-    let error: ApplyError?
+    var isSuccess: Bool {
+        if case .success = self { return true }
+        return false
+    }
 }

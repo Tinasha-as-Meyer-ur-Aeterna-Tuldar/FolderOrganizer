@@ -4,42 +4,39 @@
 //
 import SwiftUI
 
-/// 実行結果（Apply / Undo）の 1 行表示用 View
-///
-/// - success: 成功 / 失敗
-/// - title: 表示する名前（例: originalName）
-/// — errorMessage: 失敗時のエラーメッセージ（nil 可）
 struct ExecutionResultRowView: View {
-
     let success: Bool
     let title: String
     let errorMessage: String?
 
+    /// 成功行だけ Undo 開始できるようにする（必要なければ nil を渡せる）
+    let onUndo: (() -> Void)?
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: success ? "checkmark.circle.fill" : "xmark.octagon.fill")
+                .foregroundStyle(success ? .green : .red)
 
-            HStack(spacing: 8) {
-                Image(systemName: success
-                      ? "checkmark.circle.fill"
-                      : "xmark.octagon.fill")
-                    .foregroundColor(success ? .green : .orange)
-
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(
-                        .system(
-                            size: 13,
-                            weight: .semibold,
-                            design: .monospaced
-                        )
-                    )
-                    .lineLimit(1)
+                    .font(.system(.body, design: .monospaced))
+                    .lineLimit(2)
+
+                if let errorMessage, !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                }
             }
 
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
+            Spacer()
+
+            if success, let onUndo {
+                Button("Undo") {
+                    onUndo()
+                }
+                .buttonStyle(.bordered)
             }
         }
         .padding(10)

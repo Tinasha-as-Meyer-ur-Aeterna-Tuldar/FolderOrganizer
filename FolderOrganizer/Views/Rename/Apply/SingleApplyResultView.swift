@@ -1,3 +1,8 @@
+//
+//  SingleApplyResultView.swift
+//  FolderOrganizer
+//
+
 import SwiftUI
 
 struct SingleApplyResultView: View {
@@ -8,11 +13,12 @@ struct SingleApplyResultView: View {
     @State private var undoResult: UndoResult?
 
     private let applyService = DefaultRenameApplyService()
-    private let undoService = DefaultRenameUndoService()
+    private let undoService  = DefaultRenameUndoService()
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 16) {
 
+            // MARK: - Header
             Text("1件だけ Apply（安全確認）")
                 .font(.headline)
 
@@ -20,19 +26,21 @@ struct SingleApplyResultView: View {
                 Text("Before")
                     .font(.caption)
                     .foregroundColor(.secondary)
+
                 Text(plan.originalName)
+                    .font(.system(size: 12, design: .monospaced))
 
                 Text("After")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                Text("\(plan.targetParentFolder.lastPathComponent) / \(plan.targetName)")
+
+                Text(plan.destinationURL.lastPathComponent)
                     .fontWeight(.semibold)
             }
 
             Divider()
 
             // MARK: - Apply Button
-
             if applyResult == nil {
                 Button {
                     applyOne()
@@ -44,51 +52,61 @@ struct SingleApplyResultView: View {
             }
 
             // MARK: - Apply Result
-
             if let result = applyResult {
                 VStack(alignment: .leading, spacing: 8) {
+                    switch result {
 
-                    if result.success {
-                        Label(
-                            "Apply 成功",
-                            systemImage: "checkmark.circle.fill"
-                        )
-                        .foregroundColor(.green)
-                    } else if let error = result.error {
-                        Label(
-                            error.localizedDescription,
-                            systemImage: "xmark.circle.fill"
-                        )
-                        .foregroundColor(.red)
-                    }
+                    case .success(_, let destinationURL, _):
+                        Label("Apply 成功", systemImage: "checkmark.circle.fill")
+                            .foregroundColor(.green)
 
-                    // MARK: - Undo Button
+                        Text(destinationURL.lastPathComponent)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
 
-                    if result.success && undoResult == nil {
-                        Button {
-                            undo()
-                        } label: {
-                            Text("元に戻す（Undo）")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .foregroundColor(.orange)
-                    }
-
-                    if let undo = undoResult {
-                        if undo.success {
-                            Label(
-                                "元に戻しました",
-                                systemImage: "arrow.uturn.backward.circle.fill"
-                            )
-                            .foregroundColor(.blue)
-                        } else if let error = undo.error {
-                            Label(
-                                error.localizedDescription,
-                                systemImage: "xmark.circle.fill"
-                            )
+                    case .failure(let error):
+                        Label("Apply 失敗", systemImage: "xmark.circle.fill")
                             .foregroundColor(.red)
-                        }
+
+                        Text(error.localizedDescription)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+
+            // MARK: - Undo Button
+            if let result = applyResult,
+               case .success(_, _, let rollback) = result,
+               undoResult == nil {
+
+                Divider()
+
+                Button {
+                    undo(rollback: rollback)
+                } label: {
+                    Text("元に戻す（Undo）")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+
+            // MARK: - Undo Result
+            if let undoResult {
+                VStack(alignment: .leading, spacing: 8) {
+                    switch undoResult {
+
+                    case .success:
+                        Label("Undo 成功", systemImage: "arrow.uturn.backward.circle.fill")
+                            .foregroundColor(.green)
+
+                    case .failure(let error):
+                        Label("Undo 失敗", systemImage: "xmark.circle.fill")
+                            .foregroundColor(.red)
+
+                        Text(error.localizedDescription)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
@@ -101,11 +119,18 @@ struct SingleApplyResultView: View {
     // MARK: - Actions
 
     private func applyOne() {
-        applyResult = applyService.apply(plan)
+        applyService.apply(plans: [plan]) { results in
+            DispatchQueue.main.async {
+                self.applyResult = results.first
+            }
+        }
     }
 
-    private func undo() {
-        guard let result = applyResult else { return }
-        undoResult = undoService.undo(result)
+    private func undo(rollback: RollbackInfo) {
+        undoService.undo(rollback: rollback) { result in
+            DispatchQueue.main.async {
+                self.undoResult = result
+            }
+        }
     }
 }

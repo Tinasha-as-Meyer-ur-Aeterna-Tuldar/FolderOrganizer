@@ -1,3 +1,8 @@
+//
+//  Views/Rename/Diff/DiffTextView.swift
+//  FolderOrganizer
+//
+
 import SwiftUI
 
 struct DiffTextView: View {
@@ -6,12 +11,18 @@ struct DiffTextView: View {
     let font: Font
 
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(tokens) { token in
-                DiffTokenView(token: token, font: font)
-            }
+        tokens.reduce(Text("")) { partial, token in
+            partial + Text(token.text)
+                .font(font)
+                .foregroundStyle(color(for: token.kind))
         }
-        .lineLimit(nil)
-        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func color(for kind: DiffToken.Kind) -> Color {
+        switch kind {
+        case .same: return .primary
+        case .added: return .green
+        case .removed: return .red
+        }
     }
 }

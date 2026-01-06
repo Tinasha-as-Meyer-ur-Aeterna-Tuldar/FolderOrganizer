@@ -1,14 +1,21 @@
+//
+//  UndoResult.swift
+//  FolderOrganizer
+//
+
 import Foundation
 
-struct UndoResult: Identifiable {
+enum UndoResult: Identifiable {
 
-    let id = UUID()
+    case success(RollbackInfo.Move)
+    case failure(Error)
 
-    let applyResult: ApplyResult
-
-    let success: Bool
-
-    let restoredURL: URL?
-
-    let error: UndoError?
+    var id: String {
+        switch self {
+        case .success(let move):
+            return "success-\(move.id.uuidString)"
+        case .failure(let error):
+            return "failure-\(error.localizedDescription)"
+        }
+    }
 }

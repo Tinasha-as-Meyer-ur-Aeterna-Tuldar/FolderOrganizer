@@ -1,41 +1,34 @@
-// AppTheme.swift
+//
+//  Theme/AppTheme.swift
+//  FolderOrganizer
+//
+//  UI で使う色やスタイルを一箇所に集約
+//
+
 import SwiftUI
 
 enum AppTheme {
 
     enum colors {
-         
-        static let background = Color.black.opacity(0.92)
+        /// 画面タイトル
+        static let title: Color = .primary
 
-        static let spaceHalf = Color.white
-        static let spaceFull = Color.white
-        
-        
-        // MARK: - Base
-        static let accent = Color.accentColor
-        static let cardBackground = Color(nsColor: .windowBackgroundColor)
-        
-        // MARK: - Text
-        static let primaryText = Color.primary
-        static let secondaryText = Color.secondary
-        
-        // MARK: - Row Background
-        static let rowOdd  = Color.primary.opacity(0.03)
-        static let rowEven = Color.primary.opacity(0.06)
-        
-        // MARK: - Badges
-        static let modifiedBadge = Color.blue
-        static let subtitleBadge = Color.green
-        static let maybeBadge    = Color.orange
-        
-        static let newText         = Color.accentColor
-               
-        // 追加（これだけ残す）
-        static let previewBackground = Color.primary.opacity(0.05)
-        static let previewBorder     = Color.primary.opacity(0.15)
-        
-        // SpaceMarker
-        static let spaceMarkerHalf = Color.red.opacity(0.6)
-        static let spaceMarkerFull = Color.red
+        /// 画面背景
+        static let background: Color = Color(nsColor: .windowBackgroundColor)
+
+        /// メインボタンの tint
+        static let primaryButton: Color = .accentColor
+
+        /// 警告系
+        static let warning: Color = .orange
+
+        /// 危険系
+        static let danger: Color = .red
+
+        /// サブテキスト
+        static let secondaryText: Color = .secondary
+
+        static let accentColor = Color.accentColor
+        static let cardBackground = Color(nsColor: .controlBackgroundColor)
     }
 }

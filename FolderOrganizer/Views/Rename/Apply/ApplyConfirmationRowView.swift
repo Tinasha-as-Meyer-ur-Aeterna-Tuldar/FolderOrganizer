@@ -1,42 +1,36 @@
-// Views/Rename/Apply/ApplyConfirmationRowView.swift
+//
+//  ApplyConfirmationRowView.swift
+//  FolderOrganizer
+//
 
 import SwiftUI
 
-/// Apply 確認用の 1 行表示
 struct ApplyConfirmationRowView: View {
 
     let plan: RenamePlan
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
 
-            // Diff
-            let tokens = DiffBuilder.build(
-                original: plan.originalName,
-                modified: plan.targetName
-            )
+            // 元の名前
+            Text(plan.originalName)
+                .font(.system(size: 12, design: .monospaced))
 
-            DiffTextView(
-                tokens: tokens,
-                font: .system(
-                    size: 14,
-                    weight: .semibold,
-                    design: .monospaced
-                )
-            )
+            // 変更後の名前（URL から取得）
+            Text("→ \(plan.destinationURL.lastPathComponent)")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
 
-            // Warnings
-            if !plan.warnings.isEmpty {
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
-
-                    Text("\(plan.warnings.count) 件の警告")
-                        .font(.caption)
-                        .foregroundColor(.orange)
+            // Warning 表示（normalizeResult から取得）
+            let warnings = plan.normalizeResult.warnings
+            if !warnings.isEmpty {
+                ForEach(warnings.indices, id: \.self) { index in
+                    Text("⚠ \(warnings[index])")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.orange)
                 }
             }
         }
-        .cardStyle()
+        .padding(.vertical, 6)
     }
 }
