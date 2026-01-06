@@ -1,6 +1,7 @@
+// Logic/RenamePlanBuilder.swift
 //
-//  RenamePlanBuilder.swift
-//  FolderOrganizer
+// RenamePlanEngine から渡された情報をまとめ、
+// 最終的な RenamePlan を生成するビルダー。
 //
 
 import Foundation
@@ -12,13 +13,13 @@ final class RenamePlanBuilder {
         originalName: String,
         normalizedName: String,
         roles: [DetectedRole],
-        context: ContextInfo
+        context: ContextInfo,
+        normalizeResult: NameNormalizer.Result
     ) -> RenamePlan {
 
-        // ✅ destinationURL は Builder の責務
-        let destinationURL = originalURL
-            .deletingLastPathComponent()
-            .appendingPathComponent(normalizedName)
+        // リネーム後の URL をここで確定
+        let destinationURL =
+            context.currentParent.appendingPathComponent(normalizedName)
 
         return RenamePlan(
             originalURL: originalURL,
@@ -26,7 +27,8 @@ final class RenamePlanBuilder {
             originalName: originalName,
             normalizedName: normalizedName,
             roles: roles,
-            context: context
+            context: context,
+            normalizeResult: normalizeResult
         )
     }
 }

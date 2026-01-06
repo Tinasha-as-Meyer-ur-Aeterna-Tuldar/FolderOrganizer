@@ -1,53 +1,61 @@
+// Logic/NameNormalizer.swift
 //
-//  NameNormalizer.swift
-//  FolderOrganizer
+// ファイル名・フォルダ名を正規化し、
+// その結果と判断情報を Result として返す。
+// Result は UI / Export / Undo / 学習用途の
+// 単一の正規データ構造とする。
 //
 
 import Foundation
 
-enum NameNormalizer {
+struct NameNormalizer {
 
-    /// 正規化結果
-    enum Result {
-        case success(
-            value: String,
-            warnings: [String],
-            flags: [NameFlag]
-        )
+    /// 正規化結果（プロジェクト全体の共通契約）
+    struct Result {
 
-        /// 正規化後の文字列（UI / Scan / Plan 共通）
-        var value: String {
-            switch self {
-            case .success(let value, _, _):
-                return value
-            }
-        }
+        /// 最終的に使用する正規化後の名前
+        let normalized: String
 
-        /// 将来用（今は未使用でもOK）
-        var warnings: [String] {
-            switch self {
-            case .success(_, let warnings, _):
-                return warnings
-            }
-        }
+        /// ユーザーに伝えるべき警告文
+        let warnings: [String]
 
-        var flags: [NameFlag] {
-            switch self {
-            case .success(_, _, let flags):
-                return flags
-            }
+        /// 適用されたルールID（将来の学習用）
+        let appliedRules: [String]
+
+        /// 警告が1つでもあるか（UI簡易判定用）
+        var hasWarning: Bool {
+            !warnings.isEmpty
         }
     }
 
-    /// 正規化エントリポイント
-    static func normalize(_ input: String) -> Result {
-        // 仮実装（今後ルール追加）
-        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// 正規化を実行する
+    static func normalize(_ original: String) -> Result {
 
-        return .success(
-            value: trimmed,
-            warnings: [],
-            flags: []
+        var current = original
+        var rules: [String] = []
+        var warnings: [String] = []
+
+        // 例：全角スペース → 半角
+        if current.contains("　") {
+            current = current.replacingOccurrences(of: "　", with: " ")
+            rules.append("replace_fullwidth_space")
+            warnings.append("全角スペースを半角に変換しました")
+        }
+
+        // 例：前後空白トリム
+        let trimmed = current.trimmingCharacters(in: .whitespaces)
+        if trimmed != current {
+            current = trimmed
+            rules.append("trim_whitespace")
+        }
+
+        // 将来ここにルール追加
+        // if ... { warnings.append("〜〜の可能性があります") }
+
+        return Result(
+            normalized: current,
+            warnings: warnings,
+            appliedRules: rules
         )
     }
 }
