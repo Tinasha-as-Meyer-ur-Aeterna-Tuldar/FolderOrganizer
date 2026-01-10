@@ -1,29 +1,31 @@
 //
 //  Views/Common/SpaceMarker.swift
 //
-//  スペース可視化ユーティリティ
-//  ・半角スペース → ␣
-//  ・全角スペース → □
+//  不可視文字（スペース等）を可視化するためのマーカー
+//  ・半角 / 全角 / 連続スペースを区別
+//  ・色は AppTheme に完全依存
 //
 
-import Foundation
+import SwiftUI
 
-struct SpaceMarker {
+enum SpaceMarker {
 
-    static func visualize(_ text: String) -> String {
-        var result = ""
+    /// 半角スペース
+    static func half() -> Text {
+        Text("␣")
+            .foregroundStyle(AppTheme.colors.spaceHalf)
+    }
 
-        for scalar in text.unicodeScalars {
-            switch scalar.value {
-            case 0x0020: // 半角スペース
-                result.append("␣")
-            case 0x3000: // 全角スペース
-                result.append("□")
-            default:
-                result.append(String(scalar))
-            }
-        }
+    /// 全角スペース
+    static func full() -> Text {
+        Text("□")
+            .foregroundStyle(AppTheme.colors.spaceFull)
+    }
 
-        return result
+    /// 連続スペース（2個以上）
+    static func multiple(count: Int) -> Text {
+        let symbols = String(repeating: "␣", count: count)
+        return Text(symbols)
+            .foregroundStyle(AppTheme.colors.spaceMultiple)
     }
 }

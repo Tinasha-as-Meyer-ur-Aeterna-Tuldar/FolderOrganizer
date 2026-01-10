@@ -2,10 +2,8 @@
 //  Views/Rename/Preview/RenamePreviewRow.swift
 //
 //  Inline Edit Row
-//  ・表示時：Diff 表示
-//  ・編集時：TextEditor
-//  ・Enter = 確定
-//  ・Esc = キャンセル
+//  ・差分判定は original / normalized 比較のみ
+//  ・編集状態と差分状態を分離
 //
 
 import SwiftUI
@@ -16,8 +14,6 @@ struct RenamePreviewRow: View {
 
     let plan: RenamePlan
     let isSelected: Bool
-
-    /// スペース可視化（ContentView → List → Row で伝播）
     let showSpaceMarkers: Bool
 
     let onCommit: (String) -> Void
@@ -33,23 +29,29 @@ struct RenamePreviewRow: View {
 
     private let editFontSize: CGFloat = 15 * 1.8
 
+    /// 差分があるか（唯一の判定）
+    private var hasDiff: Bool {
+        plan.originalName != plan.normalizedName
+    }
+
     // MARK: - Body
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
 
-            Image(systemName: isEditing ? "pencil.circle.fill" : "circle")
-                .foregroundColor(isEditing ? .blue : .secondary)
+            // 差分インジケータ（編集状態とは無関係）
+            Image(systemName: hasDiff ? "pencil.circle.fill" : "circle")
+                .foregroundColor(hasDiff ? .accentColor : .secondary)
                 .frame(width: 18)
 
             VStack(alignment: .leading, spacing: 4) {
 
                 if isEditing {
 
-                    // 編集時：元の名前（比較用）
+                    // 編集時：元の名前（参照用）
                     Text(plan.originalName)
                         .font(.system(size: editFontSize, design: .monospaced))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     // 編集対象
@@ -107,18 +109,19 @@ struct RenamePreviewRow: View {
     // MARK: - Key Handling
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
-        if press.key == .return {
+        switch press.key {
+        case .return:
             isEditing = false
             onCommit(editingText)
             return .handled
-        }
 
-        if press.key == .escape {
+        case .escape:
             isEditing = false
             onCancel()
             return .handled
-        }
 
-        return .ignored
+        default:
+            return .ignored
+        }
     }
 }

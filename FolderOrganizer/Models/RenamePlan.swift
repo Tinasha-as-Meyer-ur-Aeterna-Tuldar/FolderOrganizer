@@ -31,4 +31,9 @@ struct RenamePlan: Identifiable {
 
     /// 正規化結果（warnings / appliedRules など）
     let normalizeResult: NameNormalizer.Result
+    
+    /// 変更があるか（計算プロパティ）
+    var hasDiff: Bool {
+        originalName != normalizedName
+    }
 }

@@ -1,10 +1,9 @@
 //
-//  Views/Rename/Diff/DiffTextView.swift
+//  Views/Rename/Preview/DiffTextView.swift
 //
-//  Diff 表示専用 View（STEP 3-3）
-//  ・上下並び比較
-//  ・変更あり行を強調（STEP 3-2）
-//  ・スペース可視化 ON/OFF 対応
+//  original / normalized を比較して表示
+//  ・スペース可視化対応
+//  ・Diff 表示は最低限（STEP 3-4 で拡張）
 //
 
 import SwiftUI
@@ -13,73 +12,64 @@ struct DiffTextView: View {
 
     let original: String
     let normalized: String
-    let showSpaceMarkers: Bool   // ★ 追加
-
-    /// 変更があるか
-    var hasDiff: Bool {
-        original != normalized
-    }
-
-    /// 表示用テキスト（スペース可視化対応）
-    private var originalText: String {
-        showSpaceMarkers
-        ? SpaceMarker.visualize(original)
-        : original
-    }
-
-    private var normalizedText: String {
-        showSpaceMarkers
-        ? SpaceMarker.visualize(normalized)
-        : normalized
-    }
-
-    /// 非編集時 基準フォント
-    private let baseFont: Font = .system(size: 15, design: .monospaced)
+    let showSpaceMarkers: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
+            renderLine(text: original)
+                .foregroundStyle(AppTheme.colors.secondaryText)
 
-            // 元の名前
-            Text(originalText)
-                .font(baseFont)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            renderLine(text: normalized)
+                .foregroundStyle(.primary)
+        }
+        .font(.system(size: 13, design: .monospaced))
+    }
 
-            // 変更後の名前
-            Text(normalizedText)
-                .font(
-                    hasDiff
-                    ? baseFont.weight(.semibold)
-                    : baseFont
-                )
-                .foregroundColor(
-                    hasDiff
-                    ? Color.accentColor
-                    : Color.primary
-                )
-                .fixedSize(horizontal: false, vertical: true)
+    // MARK: - Render
+
+    @ViewBuilder
+    private func renderLine(text: String) -> some View {
+        if showSpaceMarkers {
+            renderWithSpaceMarkers(text)
+        } else {
+            Text(text)
+        }
+    }
+
+    // MARK: - Space Marker Rendering
+
+    private func renderWithSpaceMarkers(_ text: String) -> Text {
+        var result = Text("")
+        var spaceCount = 0
+
+        for char in text {
+            switch char {
+            case " ":
+                spaceCount += 1
+
+            case "　":
+                flushSpaces(&result, count: spaceCount)
+                spaceCount = 0
+                result = result + SpaceMarker.full()
+
+            default:
+                flushSpaces(&result, count: spaceCount)
+                spaceCount = 0
+                result = result + Text(String(char))
+            }
+        }
+
+        flushSpaces(&result, count: spaceCount)
+        return result
+    }
+
+    private func flushSpaces(_ result: inout Text, count: Int) {
+        guard count > 0 else { return }
+
+        if count == 1 {
+            result = result + SpaceMarker.half()
+        } else {
+            result = result + SpaceMarker.multiple(count: count)
         }
     }
 }
-
-#if DEBUG
-struct DiffTextView_Previews: PreviewProvider {
-    static var previews: some View {
-        VStack(spacing: 12) {
-            DiffTextView(
-                original: "タイトル　テスト",
-                normalized: "タイトル テスト",
-                showSpaceMarkers: true
-            )
-
-            DiffTextView(
-                original: "変更なし",
-                normalized: "変更なし",
-                showSpaceMarkers: false
-            )
-        }
-        .padding()
-        .frame(width: 420)
-    }
-}
-#endif
