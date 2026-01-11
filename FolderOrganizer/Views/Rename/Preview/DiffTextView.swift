@@ -1,9 +1,9 @@
 //
 //  Views/Rename/Preview/DiffTextView.swift
 //
-//  Myers Diff 表示（STEP 3-6）
-//  ・insert / delete / replace / equal を色分け
-//  ・未変更スペースをアクセント系カラーで表示
+//  Myers Diff 表示（STEP 3-7）
+//  ・Diff 用カラーを AppTheme に集約
+//  ・View は「意味 → 色」を Theme に委譲
 //
 
 import SwiftUI
@@ -28,7 +28,7 @@ struct DiffTextView: View {
                 .foregroundStyle(AppTheme.colors.secondaryText)
 
             render(tokens: diffResult.normalized)
-                .foregroundStyle(.primary)
+                .foregroundStyle(AppTheme.colors.primaryText)
         }
         .font(.system(size: 15, design: .monospaced))
     }
@@ -38,30 +38,31 @@ struct DiffTextView: View {
     private func render(tokens: [DiffToken]) -> Text {
         tokens.reduce(Text("")) { result, token in
             let displayChar = visibleCharacter(token.character)
-
-            let color: Color? = {
-                switch token.operation {
-                case .delete:
-                    return .red
-
-                case .insert:
-                    return .green
-
-                case .replace:
-                    // ✅ 置換は insert/delete より控えめに目立たせる
-                    return .orange.opacity(0.85)
-
-                case .equal:
-                    // 未変更スペースのみ「控えめなアクセント色」
-                    if isSpace(token.character) {
-                        return Color.accentColor.opacity(0.55)
-                    } else {
-                        return nil
-                    }
-                }
-            }()
+            let color = colorFor(token)
 
             return result + Text(displayChar).foregroundColor(color)
+        }
+    }
+
+    // MARK: - Color Resolver
+
+    private func colorFor(_ token: DiffToken) -> Color? {
+        switch token.operation {
+        case .delete:
+            return AppTheme.colors.diffDelete
+
+        case .insert:
+            return AppTheme.colors.diffInsert
+
+        case .replace:
+            return AppTheme.colors.diffReplace
+
+        case .equal:
+            if isSpace(token.character) {
+                return AppTheme.colors.diffSpace
+            } else {
+                return nil
+            }
         }
     }
 
@@ -78,7 +79,7 @@ struct DiffTextView: View {
         case " ":
             return "␣"
         case "　":
-            return "□"   // 全角スペース（区別不要ならここも "␣" にしてOK）
+            return "□"   // 全角スペース（区別不要なら "␣" に統一してもOK）
         default:
             return char
         }
