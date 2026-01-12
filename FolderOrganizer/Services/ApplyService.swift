@@ -1,20 +1,25 @@
 // Services/ApplyService.swift
 //
-// RenamePlan を実際にファイルシステムへ適用するサービス。
-// Undo 用の情報も必ず生成する。
+// RenamePlan を 1件ずつ Apply するシンプル Service。
+// ⚠️ 旧 ApplyResult(init: isSuccess:error:undoInfo:) を使わない
+// ✅ ApplyResult の Factory メソッドを使う
 //
 
 import Foundation
 
 final class ApplyService {
 
+    // MARK: - Dependencies
+
     private let fileManager: FileManager
+
+    // MARK: - Init
 
     init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
     }
 
-    // MARK: - Public API
+    // MARK: - Public
 
     func apply(plans: [RenamePlan]) -> [ApplyResult] {
         plans.map { applySingle($0) }
@@ -25,37 +30,36 @@ final class ApplyService {
     private func applySingle(_ plan: RenamePlan) -> ApplyResult {
 
         let fromURL = plan.originalURL
-        let toURL = plan.destinationURL
+        let toURL = plan.targetURL
 
-        guard fromURL != toURL else {
-            return ApplyResult(
+        // 変更なし → スキップ
+        if plan.isChanged == false {
+            return ApplyResult.skipped(
                 plan: plan,
-                isSuccess: true,
-                error: nil,
-                undoInfo: ApplyResult.UndoInfo(from: toURL, to: fromURL)
+                reason: "変更なし"
             )
         }
 
-        do {
-            if fileManager.fileExists(atPath: toURL.path) {
-                throw ApplyError.destinationAlreadyExists(toURL)
-            }
-
-            try fileManager.moveItem(at: fromURL, to: toURL)
-
-            return ApplyResult(
+        // 既に存在 → 失敗
+        if fileManager.fileExists(atPath: toURL.path) {
+            return ApplyResult.failure(
                 plan: plan,
-                isSuccess: true,
-                error: nil,
-                undoInfo: ApplyResult.UndoInfo(from: toURL, to: fromURL)
+                error: .destinationAlreadyExists(toURL)
             )
+        }
 
+        // move 実行
+        do {
+            try fileManager.moveItem(at: fromURL, to: toURL)
+            return ApplyResult.success(plan: plan)
         } catch {
-            return ApplyResult(
+            return ApplyResult.failure(
                 plan: plan,
-                isSuccess: false,
-                error: error,
-                undoInfo: nil
+                error: .fileMoveFailed(
+                    from: fromURL,
+                    to: toURL,
+                    message: String(describing: error)
+                )
             )
         }
     }

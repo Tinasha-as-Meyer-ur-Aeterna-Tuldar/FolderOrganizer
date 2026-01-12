@@ -1,8 +1,7 @@
 // Models/RenameItem.swift
 //
-// 1行分のリネーム情報（Domain の最小単位）
-// - 自動 / 手編集 / Import の区別を明示
-// - 問題点（subtitle 等）は enum で保持
+// 1行ぶんのリネームデータ
+// - RenameItemSource は別ファイルで定義する（重複定義しない）
 //
 
 import Foundation
@@ -13,26 +12,25 @@ struct RenameItem: Identifiable, Hashable, Codable {
 
     let id: UUID
 
-    // MARK: - Core Names
+    // MARK: - Names
 
     let original: String
     var normalized: String
 
-    // MARK: - Origin
+    // MARK: - Meta
 
-    let source: RenameSource
-
-    // MARK: - Issues
-
-    let issues: Set<RenameIssue>
+    var source: RenameItemSource
+    var issues: Set<RenameIssue>
 
     // MARK: - Computed
 
+    /// 現在の確定名
     var finalName: String {
         normalized
     }
 
-    var hasIssues: Bool {
+    /// 旧互換（UI 用）
+    var flagged: Bool {
         !issues.isEmpty
     }
 
@@ -42,7 +40,7 @@ struct RenameItem: Identifiable, Hashable, Codable {
         id: UUID = UUID(),
         original: String,
         normalized: String,
-        source: RenameSource,
+        source: RenameItemSource = .auto,
         issues: Set<RenameIssue> = []
     ) {
         self.id = id

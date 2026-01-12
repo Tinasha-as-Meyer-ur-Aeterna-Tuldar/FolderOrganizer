@@ -26,12 +26,13 @@ struct ApplyResultExport: Codable {
     // MARK: - Init
 
     init(from result: ApplyResult) {
-
         self.version = .v1
         self.exportedAt = Date()
 
+        // ✅ 旧互換：ApplyResult.plan を参照
         self.originalPath = result.plan.originalURL.path
 
+        // ✅ 旧互換：ApplyResult.undoInfo を参照（成功時のみ）
         if let undoInfo = result.undoInfo {
             self.appliedPath = undoInfo.from.path
         } else {
