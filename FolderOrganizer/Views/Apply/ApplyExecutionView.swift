@@ -1,63 +1,88 @@
 // Views/Apply/ApplyExecutionView.swift
 //
-// Apply を実行中の進捗表示画面
-// ・RenamePlan を受け取り、RenameApplyService を実行
-// ・完了後、ApplyResult 配列を onFinish で返す
-// ・この View 自身は結果を解釈しない（責務分離）
+// Apply 実行画面
+// - v0.2 UX: 結果サマリは ApplyResultList に集約
 //
 
 import SwiftUI
 
 struct ApplyExecutionView: View {
 
-    // MARK: - Inputs
+    // MARK: - Dependencies
 
-    /// 適用対象の RenamePlan 一覧
+    let rootURL: URL
     let plans: [RenamePlan]
 
-    /// Apply 実行 Service
     let applyService: RenameApplyService
+    let autoSaveService: DefaultRenameSessionLogAutoSaveService
 
-    /// 完了時コールバック
-    let onFinish: ([ApplyResult]) -> Void
+    let onClose: () -> Void
 
     // MARK: - State
 
-    @State private var isRunning: Bool = false
+    @State private var isExecuting: Bool = false
+    @State private var results: [ApplyResult] = []
+
+    // MARK: - Init
+
+    init(
+        rootURL: URL,
+        plans: [RenamePlan],
+        applyService: RenameApplyService,
+        autoSaveService: DefaultRenameSessionLogAutoSaveService = DefaultRenameSessionLogAutoSaveService(),
+        onClose: @escaping () -> Void
+    ) {
+        self.rootURL = rootURL
+        self.plans = plans
+        self.applyService = applyService
+        self.autoSaveService = autoSaveService
+        self.onClose = onClose
+    }
 
     // MARK: - View
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
 
-            Text("Apply 実行中")
-                .font(.headline)
+            if isExecuting {
+                ProgressView("適用中…")
+                    .progressViewStyle(.linear)
+            }
 
-            ProgressView()
-                .progressViewStyle(.linear)
-
-            Text("件数: \(plans.count)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            ApplyResultList(results: results)
 
             Spacer()
+
+            HStack {
+                Spacer()
+                Button("閉じる") {
+                    onClose()
+                }
+                .keyboardShortcut(.cancelAction)
+            }
         }
-        .padding(24)
+        .padding()
         .onAppear {
-            run()
+            executeApplyIfNeeded()
         }
     }
 
-    // MARK: - Execute
+    // MARK: - Apply
 
-    private func run() {
-        guard !isRunning else { return }
-        isRunning = true
+    private func executeApplyIfNeeded() {
+        guard !isExecuting, results.isEmpty else { return }
 
-        applyService.apply(plans: plans) { results in
-            DispatchQueue.main.async {
-                onFinish(results)
-            }
+        isExecuting = true
+
+        applyService.apply(plans: plans) { applyResults in
+            self.results = applyResults
+            self.isExecuting = false
+
+            autoSaveService.saveAfterApply(
+                rootURL: rootURL,
+                plans: plans,
+                results: applyResults
+            )
         }
     }
 }
