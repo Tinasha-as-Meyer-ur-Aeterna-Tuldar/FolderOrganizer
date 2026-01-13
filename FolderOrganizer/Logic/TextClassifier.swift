@@ -1,53 +1,20 @@
 // Logic/TextClassifier.swift
 import Foundation
 
-/// フォルダ名（正規化済み）の「構造」を軽く判定するユーティリティ
-struct TextClassifier {
+/// ここは「将来の判定基準」を残す場所。
+/// まずはビルド優先で簡易実装にしてあります。
+enum TextClassifier {
 
-    /// 「これはサブタイトルっぽい（かなり確度高い）」とみなす条件
+    /// 例: 「サブタイトルっぽい」判定（確定）
     static func isSubtitle(_ text: String) -> Bool {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // 短めで記号を含むものを優先して「サブタイトル」扱い
-        if trimmed.count <= 32 {
-            if trimmed.contains(" – ") || trimmed.contains("―") || trimmed.contains("―") {
-                return true
-            }
-        }
-
-        // 括弧のみ／括弧＋短いフレーズ
-        if trimmed.hasPrefix("「"), trimmed.hasSuffix("」") {
-            return true
-        }
-
-        // 数字＋話数・巻数
-        if trimmed.contains("話") || trimmed.contains("巻") {
-            return true
-        }
-
+        // TODO: あなたの本来の基準に差し替え
+        // 例: 先頭が "（" で始まる、または "：" が含まれる等
         return false
     }
 
-    /// 「サブタイトルの可能性はあるが、要確認（薄いハイライト）」レベル
+    /// 例: 「サブタイトル候補」判定（要確認）
     static func isPotentialSubtitle(_ text: String) -> Bool {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // 少し長め＋区切り記号を含む場合
-        if trimmed.count <= 60 {
-            if trimmed.contains(" – ")
-                || trimmed.contains(" - ")
-                || trimmed.contains("：")
-                || trimmed.contains(":")
-            {
-                return true
-            }
-        }
-
-        // かっこ始まり
-        if trimmed.hasPrefix("(") || trimmed.hasSuffix(")") {
-            return true
-        }
-
+        // TODO: あなたの本来の基準に差し替え
         return false
     }
 }

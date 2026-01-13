@@ -1,21 +1,52 @@
 // Models/RenameItem.swift
+//
+// 1行ぶんのリネームデータ
+// - RenameItemSource は別ファイルで定義する（重複定義しない）
+//
+
 import Foundation
 
-/// 1行ぶんのリネームデータ
-struct RenameItem: Identifiable, Hashable {
-    let id = UUID()
+struct RenameItem: Identifiable, Hashable, Codable {
 
-    var original: String      // 元名
-    var normalized: String    // 正規化後（＝「新」）
-    var flagged: Bool         // 「おかしい？」フラグ
+    // MARK: - Identity
 
-    /// 自動でサブタイトルと判定されたもの
-    var isSubtitle: Bool {
-        TextClassifier.isSubtitle(normalized)
+    let id: UUID
+
+    // MARK: - Names
+
+    let original: String
+    var normalized: String
+
+    // MARK: - Meta
+
+    var source: RenameItemSource
+    var issues: Set<RenameIssue>
+
+    // MARK: - Computed
+
+    /// 現在の確定名
+    var finalName: String {
+        normalized
     }
 
-    /// サブタイトルの可能性あり（要チェック）
-    var isPotentialSubtitle: Bool {
-        TextClassifier.isPotentialSubtitle(normalized)
+    /// 旧互換（UI 用）
+    var flagged: Bool {
+        !issues.isEmpty
+    }
+
+    // MARK: - Init
+
+    init(
+        id: UUID = UUID(),
+        original: String,
+        normalized: String,
+        source: RenameItemSource = .auto,
+        issues: Set<RenameIssue> = []
+    ) {
+        self.id = id
+        self.original = original
+        self.normalized = normalized
+        self.source = source
+        self.issues = issues
     }
 }
