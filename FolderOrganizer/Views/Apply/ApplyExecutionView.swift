@@ -8,81 +8,53 @@ import SwiftUI
 
 struct ApplyExecutionView: View {
 
-    // MARK: - Dependencies
-
     let rootURL: URL
-    let plans: [RenamePlan]
+      let plans: [RenamePlan]
+      let applyService: RenameApplyService
 
-    let applyService: RenameApplyService
-    let autoSaveService: DefaultRenameSessionLogAutoSaveService
+      let onFinish: (_ results: [ApplyResult], _ rollbackInfo: RollbackInfo) -> Void
+      let onClose: () -> Void
 
-    let onClose: () -> Void
-
-    // MARK: - State
-
-    @State private var isExecuting: Bool = false
-    @State private var results: [ApplyResult] = []
-
-    // MARK: - Init
-
-    init(
-        rootURL: URL,
-        plans: [RenamePlan],
-        applyService: RenameApplyService,
-        autoSaveService: DefaultRenameSessionLogAutoSaveService = DefaultRenameSessionLogAutoSaveService(),
-        onClose: @escaping () -> Void
-    ) {
-        self.rootURL = rootURL
-        self.plans = plans
-        self.applyService = applyService
-        self.autoSaveService = autoSaveService
-        self.onClose = onClose
-    }
-
-    // MARK: - View
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(spacing: 0) {
 
-            if isExecuting {
-                ProgressView("適用中…")
-                    .progressViewStyle(.linear)
-            }
+            header
 
-            ApplyResultList(results: results)
+            Divider()
 
-            Spacer()
-
-            HStack {
-                Spacer()
-                Button("閉じる") {
-                    onClose()
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    ForEach(plans) { plan in
+                        Text(plan.originalName)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                 }
-                .keyboardShortcut(.cancelAction)
+                .padding()
             }
+
+            Divider()
+
+            footer
         }
-        .padding()
-        .onAppear {
-            executeApplyIfNeeded()
-        }
+        // ❌ maxHeight: .infinity は付けない
+        .frame(minWidth: 600, minHeight: 400)
     }
 
-    // MARK: - Apply
-
-    private func executeApplyIfNeeded() {
-        guard !isExecuting, results.isEmpty else { return }
-
-        isExecuting = true
-
-        applyService.apply(plans: plans) { applyResults in
-            self.results = applyResults
-            self.isExecuting = false
-
-            autoSaveService.saveAfterApply(
-                rootURL: rootURL,
-                plans: plans,
-                results: applyResults
-            )
+    private var header: some View {
+        HStack {
+            Text("Apply Preview")
+                .font(.headline)
+            Spacer()
         }
+        .padding()
+    }
+
+    private var footer: some View {
+        HStack {
+            Spacer()
+            Button("閉じる", action: onClose)
+        }
+        .padding()
     }
 }

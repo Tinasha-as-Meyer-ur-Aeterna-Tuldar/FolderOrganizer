@@ -1,8 +1,8 @@
+// Domain/Undo/UndoResult.swift
 //
-//  Models/UndoResult.swift
-//  FolderOrganizer
-//
-//  Undo 実行結果を表す Domain モデル
+// Undo 実行結果を表す Domain モデル
+// - UI で一覧表示するため Identifiable
+// - 各結果は「成功 or 失敗」
 //
 
 import Foundation

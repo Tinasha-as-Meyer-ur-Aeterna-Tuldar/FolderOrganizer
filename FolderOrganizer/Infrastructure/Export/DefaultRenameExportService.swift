@@ -1,30 +1,19 @@
 // Infrastructure/Export/DefaultRenameExportService.swift
 //
-// RenamePlan を JSON 用ドキュメントに変換する
+// Data を指定された URL に書き出す最下層 Export Service。
+// RenamePlan / RenameSessionLog / JSON の存在は一切知らない。
 //
 
 import Foundation
 
-final class DefaultRenameExportService {
+final class DefaultRenameExportService: RenameExportService {
+
+    // MARK: - Export
 
     func export(
-        plans: [RenamePlan],
-        rootFolderURL: URL
-    ) -> RenameExportDocument {
-
-        let exportPlans: [RenamePlanExport] = plans.map {
-            RenamePlanExportMapper.map($0)
-        }
-
-        let issues: [RenameExportIssue] =
-            RenameExportIssueBuilder.build(from: plans)
-
-        return RenameExportDocument(
-            version: .v1,
-            exportedAt: Date(),
-            rootFolderPath: rootFolderURL.path,
-            items: exportPlans,
-            issues: issues
-        )
+        data: Data,
+        to url: URL
+    ) throws {
+        try data.write(to: url, options: .atomic)
     }
 }

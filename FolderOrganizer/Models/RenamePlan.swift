@@ -91,3 +91,19 @@ struct RenamePlan: Identifiable, Hashable, Codable {
         self.item = item
     }
 }
+
+// MARK: - Immutable Update API（State / View 用）
+
+extension RenamePlan {
+
+    /// finalName を更新した新しい RenamePlan を返す
+    /// - Note: 既存インスタンスは変更しない（immutable）
+    func updatingFinalName(_ newName: String) -> RenamePlan {
+        RenamePlan(
+            id: self.id,
+            originalURL: self.originalURL,
+            targetParentURL: self.targetParentURL,
+            item: self.item.updatingFinalName(newName)
+        )
+    }
+}

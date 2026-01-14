@@ -1,25 +1,28 @@
+// Views/Rename/Preview/DryRunPreviewView.swift
 //
-//  DryRunPreviewView.swift
-//  FolderOrganizer
+// DryRun（実行前プレビュー）画面
 //
 
 import SwiftUI
 import Combine
 
-/// DryRun（実行前プレビュー）画面
 struct DryRunPreviewView: View {
 
     // MARK: - Dependencies
+
     let engine: RenamePlanEngine
     @ObservedObject var decisionStore: UserDecisionStore
 
     // MARK: - Inputs
-    let itemURLs: [URL]
+
+    let rootURL: URL
 
     // MARK: - State
+
     @State private var plans: [RenamePlan] = []
 
     // MARK: - View
+
     var body: some View {
         ApplyConfirmationView(
             plans: plans,
@@ -33,15 +36,14 @@ struct DryRunPreviewView: View {
         .onAppear {
             rebuildPlans()
         }
-        .onReceive(decisionStore.decisionsPublisher) {
+        .onReceive(decisionStore.decisionsPublisher) { _ in
             rebuildPlans()
         }
     }
 
     // MARK: - Private
+
     private func rebuildPlans() {
-        plans = itemURLs.map {
-            engine.generatePlan(for: $0)
-        }
+        plans = engine.buildPlans(from: rootURL)
     }
 }

@@ -50,3 +50,19 @@ struct RenameItem: Identifiable, Hashable, Codable {
         self.issues = issues
     }
 }
+
+// MARK: - Immutable Update API
+
+extension RenameItem {
+
+    /// finalName（= normalized）を更新した新しい RenameItem を返す
+    func updatingFinalName(_ newName: String) -> RenameItem {
+        RenameItem(
+            id: self.id,
+            original: self.original,
+            normalized: newName,
+            source: .user,          // ← ここを manual → user に変更
+            issues: self.issues
+        )
+    }
+}

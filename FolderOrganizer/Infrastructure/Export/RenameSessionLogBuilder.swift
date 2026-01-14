@@ -1,8 +1,9 @@
 // Infrastructure/Export/RenameSessionLogBuilder.swift
 //
-// 既存 Domain（RenamePlan / ApplyResult）から Export DTO（RenameSessionLog）を組み立てる Builder
-// - Domain を Codable にしない方針の中核
-// - v0.2-1 は Apply ログだけを対象にする（Undo は v0.2-2 以降）
+// Domain（RenamePlan / ApplyResult / RollbackInfo）から
+// RenameSessionLog（Export DTO）を構築する Builder。
+// - UI 状態（RenameSession）は参照しない
+// - Apply 直後の AutoSave では Undo は未実行のため executedAt は常に nil
 //
 
 import Foundation
@@ -11,76 +12,137 @@ protocol RenameSessionLogBuilding {
     func build(
         rootURL: URL,
         plans: [RenamePlan],
-        results: [ApplyResult]
+        applyResults: [ApplyResult],
+        rollbackInfo: RollbackInfo?
     ) -> RenameSessionLog
 }
 
 final class RenameSessionLogBuilder: RenameSessionLogBuilding {
 
+    // MARK: - Build
+
     func build(
         rootURL: URL,
         plans: [RenamePlan],
-        results: [ApplyResult]
+        applyResults: [ApplyResult],
+        rollbackInfo: RollbackInfo?
     ) -> RenameSessionLog {
 
-        let planLogs: [RenamePlanLog] = plans.map { plan in
+        RenameSessionLog(
+            schemaVersion: "0.2",
+            appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown",
+            exportedAt: Date(),
+            session: buildSessionInfo(rootURL: rootURL, plans: plans),
+            plans: buildPlanLogs(from: plans),
+            applyResults: buildApplyResultLogs(from: applyResults),
+            undo: buildUndoLog(from: rollbackInfo),
+            learningHints: LearningHintsLog(
+                editedCount: plans.filter { $0.isChanged }.count,
+                autoAcceptedCount: plans.filter { !$0.isChanged }.count,
+                patterns: []
+            )
+        )
+    }
+
+    // MARK: - Session Info
+
+    private func buildSessionInfo(
+        rootURL: URL,
+        plans: [RenamePlan]
+    ) -> RenameSessionInfo {
+
+        let total = plans.count
+        let changed = plans.filter { $0.isChanged }.count
+        let skipped = total - changed
+
+        return RenameSessionInfo(
+            id: UUID(),
+            rootPath: rootURL.path,
+            scannedAt: Date(),
+            appliedAt: Date(),
+            summary: .init(
+                total: total,
+                changed: changed,
+                skipped: skipped
+            )
+        )
+    }
+
+    // MARK: - Plans
+
+    private func buildPlanLogs(from plans: [RenamePlan]) -> [RenamePlanLog] {
+        plans.map { plan in
             RenamePlanLog(
                 id: plan.id,
-                originalPath: plan.originalURL.path,
-                targetPath: plan.targetURL.path,
                 originalName: plan.originalName,
                 normalizedName: plan.normalizedName,
-                isChanged: plan.isChanged,
-                source: "unspecified",
-                warnings: plan.normalizeResult.warnings
+                userEdited: plan.isChanged,
+                issues: plan.item.issues.map { $0.rawValue },
+                diff: .init(from: plan.originalName, to: plan.normalizedName)
             )
         }
+    }
 
-        let resultLogs: [ApplyResultLog] = results.map { result in
-            let plan = result.plan
+    // MARK: - Apply Results
 
+    private func buildApplyResultLogs(from results: [ApplyResult]) -> [ApplyResultLog] {
+        results.map { result in
             switch result.status {
+
             case .success:
                 return ApplyResultLog(
-                    planID: plan.id,
-                    originalPath: plan.originalURL.path,
-                    targetPath: plan.targetURL.path,
+                    planId: result.plan.id,
                     status: .success,
-                    detail: nil,
-                    errorDescription: nil
+                    fromPath: result.plan.originalURL.path,
+                    toPath: result.plan.targetURL.path,
+                    reason: nil
                 )
 
             case .skipped(let reason):
                 return ApplyResultLog(
-                    planID: plan.id,
-                    originalPath: plan.originalURL.path,
-                    targetPath: plan.targetURL.path,
+                    planId: result.plan.id,
                     status: .skipped,
-                    detail: reason,
-                    errorDescription: nil
+                    fromPath: nil,
+                    toPath: nil,
+                    reason: reason
                 )
 
             case .failure(let error):
-                // ApplyError は Codable にしない。最低限、読みやすい文字列だけ残す。
-                let message = (error as NSError).localizedDescription
                 return ApplyResultLog(
-                    planID: plan.id,
-                    originalPath: plan.originalURL.path,
-                    targetPath: plan.targetURL.path,
+                    planId: result.plan.id,
                     status: .failure,
-                    detail: nil,
-                    errorDescription: message
+                    fromPath: nil,
+                    toPath: nil,
+                    reason: error.localizedDescription
                 )
             }
         }
+    }
 
-        return RenameSessionLog(
-            schemaVersion: 1,
-            sessionID: UUID(),
-            createdAt: Date(),
-            rootPath: rootURL.path,
-            plans: planLogs,
-            applyResults: resultLogs
+    // MARK: - Undo
+
+    private func buildUndoLog(from rollbackInfo: RollbackInfo?) -> UndoResultLog {
+
+        guard let rollbackInfo else {
+            return UndoResultLog(
+                available: false,
+                executedAt: nil,
+                moves: []
+            )
+        }
+
+        let moves = rollbackInfo.moves.map {
+            UndoResultLog.Move(
+                fromPath: $0.from.path,
+                toPath: $0.to.path
+            )
+        }
+
+        // Apply 直後の AutoSave なので Undo はまだ未実行 → executedAt は nil
+        return UndoResultLog(
+            available: true,
+            executedAt: nil,
+            moves: moves
         )
     }
 }

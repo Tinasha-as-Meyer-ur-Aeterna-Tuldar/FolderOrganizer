@@ -1,63 +1,77 @@
+// FolderOrganizer/Views/Rename/Preview/PreviewListContentView.swift
 //
-//  PreviewListContentView.swift
-//  FolderOrganizer
-//
-//  プレビュー一覧（常時表示）
-//  編集オーバーレイは ZStack で上に重ねる（STEP C）
+// RenamePlan 一覧 + 選択 + インライン編集（v0.2 最終）
+// 編集状態はこの View が一元管理する
 //
 
 import SwiftUI
 
 struct PreviewListContentView: View {
 
-    // MARK: - Session
-    @ObservedObject var session: RenameSession
+    // MARK: - Input
 
-    // MARK: - 表示オプション
+    let plans: [RenamePlan]
+    let selectionIndex: Int?
     let showSpaceMarkers: Bool
 
-    /// Diff 表示 ON / OFF（STEP D でトグル化予定）
-    private let isDiffVisible: Bool = true
+    let onSelect: (Int) -> Void
+    let onCommit: (Int, String) -> Void
+
+    // MARK: - Editing State（ここが今回の修正点）
+
+    @State private var editingIndex: Int? = nil
+    @State private var editingText: String = ""
 
     // MARK: - Body
+
     var body: some View {
-        ZStack {
+        List {
+            ForEach(plans.indices, id: \.self) { index in
+                RenamePreviewRowView(
+                    plan: plans[index],
+                    isSelected: selectionIndex == index,
+                    showSpaceMarkers: showSpaceMarkers,
 
-            // =========================
-            // 一覧（常に表示）
-            // =========================
-            List(selection: $session.selectedID) {
-                ForEach(session.items) { item in
-                    RenamePreviewRowView(
-                        item: item,
-                        isDiffVisible: isDiffVisible,
-                        onEdit: {
-                            // View 更新中の状態変更を避ける
-                            DispatchQueue.main.async {
-                                session.selectedID = item.id
-                                session.startEditing()
-                            }
-                        }
-                    )
-                    .tag(item.id)
-                    .listRowBackground(rowBackground(for: item))
+                    isEditing: editingIndex == index,
+                    editingText: $editingText,
+
+                    onRequestEdit: {
+                        startEditing(index)
+                    },
+                    onCommit: { newName in
+                        commitEditing(index, newName)
+                    },
+                    onCancel: {
+                        cancelEditing()
+                    }
+                )
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onSelect(index)
                 }
-            }
-            .listStyle(.plain)
-
-            // =========================
-            // 編集オーバーレイ（STEP C）
-            // =========================
-            if session.isEditing {
-                RenameEditView(session: session)
+                .listRowBackground(
+                    selectionIndex == index
+                    ? Color.accentColor.opacity(0.15)
+                    : Color.clear
+                )
             }
         }
+        .listStyle(.plain)
     }
 
-    // MARK: - Row Background
-    private func rowBackground(for item: RenameItem) -> Color {
-        session.selectedID == item.id
-            ? Color.accentColor.opacity(0.15)
-            : Color.clear
+    // MARK: - Editing Control
+
+    private func startEditing(_ index: Int) {
+        editingIndex = index
+        editingText = plans[index].normalizedName
+    }
+
+    private func commitEditing(_ index: Int, _ newName: String) {
+        editingIndex = nil
+        onCommit(index, newName)
+    }
+
+    private func cancelEditing() {
+        editingIndex = nil
     }
 }
