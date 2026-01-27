@@ -1,7 +1,9 @@
-// Models/RenameItem.swift
+// Domain/Plan/RenameItem.swift
 //
-// 1行ぶんのリネームデータ
-// - RenameItemSource は別ファイルで定義する（重複定義しない）
+// 1行ぶんのリネーム対象
+// - original: 元のファイル名
+// - editedName: ユーザー編集後の名前（未編集なら nil）
+// - finalName: 実際に使われる最終名
 //
 
 import Foundation
@@ -9,59 +11,48 @@ import Foundation
 struct RenameItem: Identifiable, Hashable, Codable {
 
     // MARK: - Identity
-
     let id: UUID
 
     // MARK: - Names
-
     let original: String
-    var normalized: String
+    let editedName: String?
 
     // MARK: - Meta
-
     var source: RenameItemSource
     var issues: Set<RenameIssue>
 
     // MARK: - Computed
 
-    /// 現在の確定名
+    /// 実際に使われる名前
     var finalName: String {
-        normalized
-    }
-
-    /// 旧互換（UI 用）
-    var flagged: Bool {
-        !issues.isEmpty
+        editedName ?? original
     }
 
     // MARK: - Init
-
     init(
         id: UUID = UUID(),
         original: String,
-        normalized: String,
+        editedName: String? = nil,
         source: RenameItemSource = .auto,
         issues: Set<RenameIssue> = []
     ) {
         self.id = id
         self.original = original
-        self.normalized = normalized
+        self.editedName = editedName
         self.source = source
         self.issues = issues
     }
 }
 
 // MARK: - Immutable Update API
-
 extension RenameItem {
 
-    /// finalName（= normalized）を更新した新しい RenameItem を返す
     func updatingFinalName(_ newName: String) -> RenameItem {
         RenameItem(
             id: self.id,
             original: self.original,
-            normalized: newName,
-            source: .user,          // ← ここを manual → user に変更
+            editedName: newName,
+            source: .manual,
             issues: self.issues
         )
     }
