@@ -1,65 +1,25 @@
 // FolderOrganizer/Views/Browse/FolderBrowseView.swift
 //
-// フォルダ選択 → ツリー表示（OutlineGroup）
-// - STEP A: ツリーを “見る”
-// - STEP B: roleHint（表示のみ）
+// フォルダツリー表示ビュー
+// - OutlineGroup で階層表示
+// - 役割バッジ（SERIES / VOLUME / UNKNOWN）を表示
+// - 確信度バッジ（★）を表示（C-1 UI 最小）
 //
 
 import SwiftUI
 
 struct FolderBrowseView: View {
 
-    @State private var selectedFolderURL: URL?
-    @State private var rootNode: FolderNode?
-    @State private var errorMessage: String?
-
-    private let treeBuilder = FolderTreeBuilder()
-
-    // MARK: - Body
+    let rootNode: FolderNode?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-
-            // Header
-            HStack(spacing: 10) {
-                Button("フォルダを選択") {
-                    openFolder()
-                }
-
-                if let folderURL = selectedFolderURL {
-                    Text(folderURL.path)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-            }
-
-            Divider()
-
-            if let errorMessage {
-                Text(errorMessage)
-                    .foregroundColor(.red)
-            }
-
-            // Tree
+        Group {
             if let root = rootNode {
                 List {
-                    OutlineGroup([root], children: \.childrenForOutline) { node in
-                        HStack(spacing: 8) {
-                            Image(systemName: "folder")
-                                .foregroundColor(.accentColor)
-
-                            Text(node.name)
-
-                            roleBadge(node.roleHint)
-
-                            if node.fileCount > 0 {
-                                Text("(\(node.fileCount))")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 2)
+                    // OutlineGroup は children が Optional の KeyPath を要求するため、
+                    // FolderNode.children は [FolderNode]? で持つ（nil = leaf）
+                    OutlineGroup([root], children: \.children) { node in
+                        row(for: node)
                     }
                 }
                 .listStyle(.inset)
@@ -68,55 +28,64 @@ struct FolderBrowseView: View {
                     .foregroundColor(.secondary)
             }
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)    }
-
-    // MARK: - Role Badge
-
-    private func roleBadge(_ role: FolderRoleHint) -> some View {
-        Text(role.displayName)
-            .font(.caption2)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(roleColor(role).opacity(0.15))
-            .foregroundColor(roleColor(role))
-            .cornerRadius(4)
     }
 
-    private func roleColor(_ role: FolderRoleHint) -> Color {
+    // MARK: - Row
+
+    @ViewBuilder
+    private func row(for node: FolderNode) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "folder")
+                .foregroundColor(.accentColor)
+
+            Text(node.name)
+                .lineLimit(1)
+
+            // 役割バッジ
+            roleBadge(node.roleHint)
+
+            // 確信度バッジ（最小）
+            confidenceBadge(node.confidence)
+
+            if node.fileCount > 0 {
+                Text("(\(node.fileCount))")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    // MARK: - Badges
+
+    private func roleBadge(_ role: FolderRoleHint) -> some View {
+        Text(role.rawValue)
+            .font(.caption2)
+            .foregroundColor(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(roleBadgeColor(role))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func roleBadgeColor(_ role: FolderRoleHint) -> Color {
         switch role {
-        case .unknown:
-            return .secondary
         case .series:
             return .blue
         case .volume:
             return .green
+        case .unknown:
+            return .gray
         }
     }
 
-    // MARK: - Folder Picker
-
-    private func openFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-
-        if panel.runModal() == .OK, let url = panel.url {
-            selectedFolderURL = url
-            loadTree(from: url)
-        }
-    }
-
-    // MARK: - Load
-
-    private func loadTree(from url: URL) {
-        do {
-            errorMessage = nil
-            rootNode = try treeBuilder.buildTree(from: url)
-        } catch {
-            rootNode = nil
-            errorMessage = "読み込みに失敗しました: \(error.localizedDescription)"
-        }
+    private func confidenceBadge(_ confidence: RoleConfidence) -> some View {
+        Text(confidence.stars)
+            .font(.caption2)
+            .foregroundColor(confidence.color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Color.secondary.opacity(0.15))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
