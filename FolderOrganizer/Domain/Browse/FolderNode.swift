@@ -27,7 +27,7 @@ struct FolderNode: Identifiable {
     var roleHint: FolderRoleHint
 
     /// 役割推定の確信度（C-1）
-    var confidence: RoleConfidence
+    var confidence: FolderConfidence
 
     /// 子ノード（nil = leaf）
     var children: [FolderNode]?

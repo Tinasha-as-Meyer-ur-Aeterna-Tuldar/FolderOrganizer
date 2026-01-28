@@ -1,9 +1,10 @@
 // FolderOrganizer/Views/Browse/FolderBrowseView.swift
 //
-// フォルダツリー表示ビュー
-// - OutlineGroup で階層表示
-// - 役割バッジ（SERIES / VOLUME / UNKNOWN）を表示
-// - 確信度バッジ（★）を表示（C-1 UI 最小）
+// フォルダツリー表示（C-1 UI 最小実装）
+// - OutlineGroup による階層表示
+// - role（SERIES / VOLUME / UNKNOWN）バッジ表示
+// - 確信度（★）を色付きで表示
+// - ロジックは触らず View 側のみで完結
 //
 
 import SwiftUI
@@ -16,10 +17,38 @@ struct FolderBrowseView: View {
         Group {
             if let root = rootNode {
                 List {
-                    // OutlineGroup は children が Optional の KeyPath を要求するため、
-                    // FolderNode.children は [FolderNode]? で持つ（nil = leaf）
                     OutlineGroup([root], children: \.children) { node in
-                        row(for: node)
+                        HStack(spacing: 8) {
+
+                            Image(systemName: "folder")
+                                .foregroundColor(.accentColor)
+
+                            // フォルダ名
+                            Text(node.name)
+                                .lineLimit(1)
+
+                            // role バッジ
+                            Text(node.roleHint.rawValue)
+                                .font(.caption2)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(roleBackground(node.roleHint))
+                                .foregroundColor(.white)
+                                .cornerRadius(6)
+
+                            // 確信度（★）
+                            ConfidenceStarsView(confidence: node.confidence)
+
+                            Spacer()
+
+                            // ファイル数（任意情報）
+                            if node.fileCount > 0 {
+                                Text("(\(node.fileCount))")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 2)
                     }
                 }
                 .listStyle(.inset)
@@ -30,45 +59,9 @@ struct FolderBrowseView: View {
         }
     }
 
-    // MARK: - Row
+    // MARK: - UI Helpers
 
-    @ViewBuilder
-    private func row(for node: FolderNode) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "folder")
-                .foregroundColor(.accentColor)
-
-            Text(node.name)
-                .lineLimit(1)
-
-            // 役割バッジ
-            roleBadge(node.roleHint)
-
-            // 確信度バッジ（最小）
-            confidenceBadge(node.confidence)
-
-            if node.fileCount > 0 {
-                Text("(\(node.fileCount))")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding(.vertical, 2)
-    }
-
-    // MARK: - Badges
-
-    private func roleBadge(_ role: FolderRoleHint) -> some View {
-        Text(role.rawValue)
-            .font(.caption2)
-            .foregroundColor(.white)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(roleBadgeColor(role))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-    }
-
-    private func roleBadgeColor(_ role: FolderRoleHint) -> Color {
+    private func roleBackground(_ role: FolderRoleHint) -> Color {
         switch role {
         case .series:
             return .blue
@@ -78,14 +71,47 @@ struct FolderBrowseView: View {
             return .gray
         }
     }
+}
 
-    private func confidenceBadge(_ confidence: RoleConfidence) -> some View {
-        Text(confidence.stars)
-            .font(.caption2)
-            .foregroundColor(confidence.color)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(Color.secondary.opacity(0.15))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+// MARK: - Confidence Stars
+
+private struct ConfidenceStarsView: View {
+
+    let confidence: FolderConfidence
+
+    var body: some View {
+        HStack(spacing: 1) {
+            ForEach(0..<3, id: \.self) { index in
+                Image(systemName: starSymbol(at: index))
+                    .foregroundColor(starColor)
+                    .font(.caption2)
+            }
+        }
+    }
+
+    private var filledCount: Int {
+        switch confidence {
+        case .high:
+            return 3
+        case .medium:
+            return 2
+        case .low:
+            return 1
+        }
+    }
+
+    private func starSymbol(at index: Int) -> String {
+        index < filledCount ? "star.fill" : "star"
+    }
+
+    private var starColor: Color {
+        switch confidence {
+        case .high:
+            return .green
+        case .medium:
+            return .yellow
+        case .low:
+            return .gray
+        }
     }
 }
