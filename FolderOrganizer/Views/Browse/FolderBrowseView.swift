@@ -1,8 +1,8 @@
 // FolderOrganizer/Views/Browse/FolderBrowseView.swift
 //
-// フォルダ選択 → RenameItem 一覧表示（Issue 可視化対応）
-// ・RenameIssue を色＋アイコンで表示
-// ・編集 / Diff / Apply は未実装
+// フォルダ選択 → ツリー表示（構造可視化）
+// ・macOS 向けに List + OutlineGroup を使用
+// ・構造を「見る」ためのフェーズ
 //
 
 import SwiftUI
@@ -12,17 +12,17 @@ struct FolderBrowseView: View {
     // MARK: - State
 
     @State private var selectedFolderURL: URL?
-    @State private var items: [RenameItemBuilder.Built] = []
+    @State private var rootNode: FolderNode?
     @State private var errorMessage: String?
 
-    private let scanService = FileScanService()
-    private let itemBuilder = RenameItemBuilder()
+    private let treeBuilder = FolderTreeBuilder()
 
     // MARK: - Body
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
 
+            // フォルダ選択
             HStack(spacing: 10) {
                 Button("フォルダを選択") {
                     openFolder()
@@ -31,7 +31,7 @@ struct FolderBrowseView: View {
                 if let folderURL = selectedFolderURL {
                     Text(folderURL.path)
                         .font(.caption)
-                        .foregroundColor(AppTheme.colors.secondaryText)
+                        .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
             }
@@ -40,28 +40,32 @@ struct FolderBrowseView: View {
 
             if let errorMessage {
                 Text(errorMessage)
-                    .foregroundColor(AppTheme.colors.issueError)
+                    .foregroundColor(.red)
             }
 
-            if items.isEmpty {
-                Text("フォルダが選択されていません")
-                    .foregroundColor(AppTheme.colors.secondaryText)
-            } else {
-                List(items) { built in
-                    HStack(alignment: .top, spacing: 8) {
+            // ★ ここが重要
+            if let root = rootNode {
+                List {
+                    OutlineGroup(root, children: \.childrenForOutline) { node in
+                        HStack(spacing: 8) {
+                            Image(systemName: "folder")
+                                .foregroundColor(.accentColor)
 
-                        IssueIndicatorView(issues: built.item.issues)
+                            Text(node.name)
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(built.item.original)
-                                .foregroundColor(AppTheme.colors.primaryText)
-
-                            Text(built.normalizedName)
-                                .font(.caption)
-                                .foregroundColor(AppTheme.colors.secondaryText)
+                            if node.fileCount > 0 {
+                                Text("(\(node.fileCount))")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .padding(.vertical, 2) // 行の押しやすさ改善
                     }
                 }
+                .listStyle(.inset) // macOS向けに自然
+            } else {
+                Text("フォルダが選択されていません")
+                    .foregroundColor(.secondary)
             }
         }
         .padding()
@@ -78,18 +82,12 @@ struct FolderBrowseView: View {
         if panel.runModal() == .OK {
             guard let url = panel.url else { return }
             selectedFolderURL = url
-            loadFolder(url)
+            loadTree(url)
         }
     }
 
-    private func loadFolder(_ url: URL) {
-        do {
-            let urls = try scanService.scan(folderURL: url)
-            items = urls.compactMap { itemBuilder.build(from: $0) }
-            errorMessage = nil
-        } catch {
-            items = []
-            errorMessage = error.localizedDescription
-        }
+    private func loadTree(_ url: URL) {
+        rootNode = treeBuilder.buildTree(from: url)
+        errorMessage = nil
     }
 }
