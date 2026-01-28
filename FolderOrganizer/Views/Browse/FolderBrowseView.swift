@@ -1,8 +1,8 @@
 // FolderOrganizer/Views/Browse/FolderBrowseView.swift
 //
-// フォルダ選択 → RenameItem（＋正規化名）一覧表示
-// ・v0.2 の「実データ確認」＋「URL→RenameItem 変換」まで
-// ・Plan / Diff / Edit / Apply は未実装
+// フォルダ選択 → RenameItem 一覧表示（Issue 可視化対応）
+// ・RenameIssue を色＋アイコンで表示
+// ・編集 / Diff / Apply は未実装
 //
 
 import SwiftUI
@@ -31,7 +31,7 @@ struct FolderBrowseView: View {
                 if let folderURL = selectedFolderURL {
                     Text(folderURL.path)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(AppTheme.colors.secondaryText)
                         .lineLimit(1)
                 }
             }
@@ -40,20 +40,26 @@ struct FolderBrowseView: View {
 
             if let errorMessage {
                 Text(errorMessage)
-                    .foregroundColor(.red)
+                    .foregroundColor(AppTheme.colors.issueError)
             }
 
             if items.isEmpty {
                 Text("フォルダが選択されていません")
-                    .foregroundColor(.secondary)
+                    .foregroundColor(AppTheme.colors.secondaryText)
             } else {
                 List(items) { built in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(built.item.original)
+                    HStack(alignment: .top, spacing: 8) {
 
-                        Text(built.normalizedName)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        IssueIndicatorView(issues: built.item.issues)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(built.item.original)
+                                .foregroundColor(AppTheme.colors.primaryText)
+
+                            Text(built.normalizedName)
+                                .font(.caption)
+                                .foregroundColor(AppTheme.colors.secondaryText)
+                        }
                     }
                 }
             }
