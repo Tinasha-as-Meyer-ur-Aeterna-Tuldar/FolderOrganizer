@@ -1,10 +1,9 @@
-// FolderOrganizer/Domain/Browse/FolderTreeBuilder.swift
+// Domain/Browse/FolderTreeBuilder.swift
 //
-// フォルダツリー構築（B-2 / C-1）
-// - フォルダ配下を走査し、FolderNode ツリーを作る
-// - B-2a: 役割推定（フォルダ名から VOLUME を推定、他は UNKNOWN）
-// - B-2b: 親フォルダ昇格（子を見て UNKNOWN→SERIES）
-// - C-1 : 確信度付与（最小）
+// フォルダ URL から FolderNode のツリーを構築する
+// - 役割ヒント決定（B-2：既存ロジック）
+// - ツリー構築後に
+//   D-3: role / confidence を bottom-up で確定
 //
 
 import Foundation
@@ -14,92 +13,74 @@ final class FolderTreeBuilder {
     // MARK: - Public
 
     func buildTree(from rootURL: URL) throws -> FolderNode {
-        var root = try buildNode(url: rootURL, parentRole: nil)
 
-        // B-2b: 子を見て親を昇格
+        // ① 構造だけを構築
+        var root = try buildNode(url: rootURL)
+
+        // ② B-2: 子から親の roleHint 補正
         root.fixupRoleFromChildren()
 
-        // C-1: 確信度（最小）
-        root.fixupConfidence(parentRoleHint: nil)
+        // ③ D-3: 確信度を bottom-up で確定
+        root.fixupConfidence(parent: nil)
 
         return root
     }
 
     // MARK: - Core
 
-    private func buildNode(
-        url: URL,
-        parentRole: FolderRoleHint?
-    ) throws -> FolderNode {
+    private func buildNode(url: URL) throws -> FolderNode {
 
-        let fm = FileManager.default
         let name = url.lastPathComponent
 
-        // B-2a: 役割推定（最小）
-        let role = inferRole(name: name, parentRole: parentRole)
+        // --- 役割ヒント（B-2：既存ロジック）
+        let roleHint = FolderRoleHintBuilder.build(
+            name: name,
+            parentRoleHint: nil
+        )
 
-        // 配下を列挙（フォルダのみ child node、ファイルは fileCount に加算）
-        let items = (try? fm.contentsOfDirectory(
+        // --- 子フォルダ取得（type-check が重くならないよう分解）
+        let resourceKeys: Set<URLResourceKey> = [.isDirectoryKey]
+
+        let allItems = try FileManager.default.contentsOfDirectory(
             at: url,
-            includingPropertiesForKeys: [.isDirectoryKey, .isHiddenKey],
+            includingPropertiesForKeys: Array(resourceKeys),
             options: [.skipsHiddenFiles]
-        )) ?? []
+        )
 
-        var children: [FolderNode] = []
-        children.reserveCapacity(items.count)
+        var childFolders: [URL] = []
+        childFolders.reserveCapacity(allItems.count)
 
-        var fileCount = 0
-
-        for item in items {
-            let values = try item.resourceValues(forKeys: [.isDirectoryKey, .isHiddenKey])
-
-            if values.isHidden == true {
-                continue
-            }
-
+        for item in allItems {
+            let values = try item.resourceValues(forKeys: resourceKeys)
             if values.isDirectory == true {
-                let child = try buildNode(url: item, parentRole: role)
-                children.append(child)
-            } else {
-                fileCount += 1
+                childFolders.append(item)
             }
+        }
+
+        // --- Leaf
+        if childFolders.isEmpty {
+            return FolderNode(
+                url: url,
+                name: name,
+                fileCount: allItems.count,
+                roleHint: roleHint,
+                confidence: .low, // ← D-3 で後から確定
+                children: nil
+            )
+        }
+
+        // --- Children
+        let children = try childFolders.map {
+            try buildNode(url: $0)
         }
 
         return FolderNode(
-            name: name,
             url: url,
-            fileCount: fileCount,
-            roleHint: role,
-            confidence: .low, // C-1 で後から fixup
-            children: children.isEmpty ? nil : children
+            name: name,
+            fileCount: allItems.count,
+            roleHint: roleHint,
+            confidence: .low, // ← D-3 で後から確定
+            children: children
         )
-    }
-
-    // MARK: - B-2a: Role Inference (Minimal)
-
-    private func inferRole(name: String, parentRole: FolderRoleHint?) -> FolderRoleHint {
-        // 「第01巻」「第1巻」「第01-06巻」「v01」「v01-06」などを VOLUME 扱い（最小）
-        if looksLikeVolume(name) {
-            return .volume
-        }
-
-        // それ以外は UNKNOWN（B-2b で SERIES に昇格し得る）
-        return .unknown
-    }
-
-    private func looksLikeVolume(_ name: String) -> Bool {
-        let patterns: [String] = [
-            #"第\s*\d+\s*巻"#,          // 第01巻 / 第1巻
-            #"第\s*\d+\s*-\s*\d+\s*巻"#, // 第01-06巻
-            #"\bv\d{1,3}\b"#,           // v01
-            #"\bv\d{1,3}\s*-\s*v?\d{1,3}\b"# // v01-06 / v01-v06
-        ]
-
-        for p in patterns {
-            if name.range(of: p, options: [.regularExpression, .caseInsensitive]) != nil {
-                return true
-            }
-        }
-        return false
     }
 }

@@ -1,60 +1,38 @@
 // FolderOrganizer/Domain/Browse/VolumeNumberDetector.swift
 //
-// 巻数表現の検出ユーティリティ
-// - アラビア数字
-// - 漢数字（壱 / 十 / 十一 など）
-// - 第◯巻 / 巻 / vol / v
+// 巻数表記の検出（算用数字 / 漢数字 / 大字）
+// - 既存の containsVolumeIndicator を残しつつ
+// - Evaluator 側が呼ぶ API を containsVolumeNumber(in:) に統一する
 //
 
 import Foundation
 
 enum VolumeNumberDetector {
 
-    // MARK: - Public API
+    static let kanjiNumbers: [String] = [
+        "一","二","三","四","五","六","七","八","九","十",
+        "壱","弐","参","四","伍","六","七","八","九","拾"
+    ]
 
-    /// 名前に「巻数表現」が含まれているか
+    /// Evaluator 側で使う統一 API
     static func containsVolumeNumber(in text: String) -> Bool {
-        let normalized = text.lowercased()
+        return containsVolumeIndicator(text)
+    }
 
-        // 明示トークン
-        if containsExplicitVolumeToken(normalized) {
+    /// 巻数の「存在」だけを見る（現状は最小ロジック）
+    static func containsVolumeIndicator(_ text: String) -> Bool {
+        // 1. 算用数字
+        if text.range(of: #"\d+"#, options: .regularExpression) != nil {
             return true
         }
 
-        // アラビア数字
-        if containsArabicNumber(normalized) {
-            return true
-        }
-
-        // 漢数字（単体 or 複合）
-        if isPureKanjiNumber(text) {
-            return true
+        // 2. 漢数字
+        for k in kanjiNumbers {
+            if text.contains(k) {
+                return true
+            }
         }
 
         return false
-    }
-
-    /// 「壱」「十」「十一」「弐拾」など、漢数字のみで構成されているか
-    static func isPureKanjiNumber(_ text: String) -> Bool {
-        guard !text.isEmpty else { return false }
-        return text.allSatisfy { kanjiSet.contains($0) }
-    }
-
-    // MARK: - Internals
-
-    private static let kanjiSet: Set<Character> = [
-        "一","二","三","四","五","六","七","八","九","十",
-        "壱","弐","参","肆","伍","陸","漆","捌","玖","拾"
-    ]
-
-    private static func containsArabicNumber(_ text: String) -> Bool {
-        text.rangeOfCharacter(from: .decimalDigits) != nil
-    }
-
-    private static func containsExplicitVolumeToken(_ text: String) -> Bool {
-        return text.contains("第")
-            || text.contains("巻")
-            || text.contains("vol")
-            || text.contains("v")
     }
 }

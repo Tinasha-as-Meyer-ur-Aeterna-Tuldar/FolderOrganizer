@@ -1,8 +1,8 @@
-// FolderOrganizer/Domain/Browse/FolderRole.swift
+// FolderOrganizer/Domain/Role/FolderRole.swift
 //
-// フォルダの役割推定（SERIES / VOLUME / UNKNOWN）
-// - 名前ベースで軽量に判定
-// - 確信度（Confidence）は別レイヤーで評価する
+// フォルダの役割推定（C-2）
+// - 名前と親ロールから SERIES / VOLUME / UNKNOWN を推定
+// - 巻数の確信度（★）は別レイヤーで評価する
 //
 
 import Foundation
@@ -14,57 +14,47 @@ func inferRole(
 
     let normalized = name.lowercased()
 
-    // ------------------------------------
+    // -------------------------------------------------
     // ① 明示的な巻数表現（最優先）
-    // ------------------------------------
+    // -------------------------------------------------
     if looksLikeExplicitVolume(normalized) {
         return .volume
     }
 
-    // ------------------------------------
-    // ② 漢数字「単体」巻（★今回追加）
-    //    条件：
-    //    - 親が SERIES
-    //    - 名前が漢数字のみ
-    // ------------------------------------
+    // -------------------------------------------------
+    // ② 親が SERIES ＋ 巻数らしさあり → VOLUME
+    // ※ 漢数字・数字・混在すべて VolumeNumberDetector に委譲
+    // -------------------------------------------------
     if parentRole == .series,
-       VolumeNumberDetector.isPureKanjiNumber(name) {
+       VolumeNumberDetector.containsVolumeNumber(in: name) {
         return .volume
     }
 
-    // ------------------------------------
-    // ③ 親が SERIES で、数字を含む
-    // ------------------------------------
-    if parentRole == .series,
-       containsAnyNumber(normalized) {
-        return .volume
-    }
-
-    // ------------------------------------
-    // ④ 子に複数 VOLUME がぶら下がる想定 → SERIES
-    // （※ TreeBuilder 側で後処理）
-    // ------------------------------------
+    // -------------------------------------------------
+    // ③ SERIES らしい名前
+    // -------------------------------------------------
     if looksLikeSeriesName(normalized) {
         return .series
     }
 
+    // -------------------------------------------------
+    // ④ 判定不能
+    // -------------------------------------------------
     return .unknown
 }
 
-// MARK: - Helpers
+// MARK: - Heuristics
 
 private func looksLikeExplicitVolume(_ name: String) -> Bool {
-    return name.contains("第")
-        || name.contains("巻")
-        || name.contains("vol")
-        || name.contains("v")
-}
-
-private func containsAnyNumber(_ name: String) -> Bool {
-    name.rangeOfCharacter(from: .decimalDigits) != nil
+    let keywords = [
+        "vol", "volume", "巻", "話", "episode", "ep"
+    ]
+    return keywords.contains { name.contains($0) }
 }
 
 private func looksLikeSeriesName(_ name: String) -> Bool {
-    // 今は弱め。将来ここを強化する
-    return !looksLikeExplicitVolume(name)
+    let keywords = [
+        "全集", "シリーズ", "complete", "collection"
+    ]
+    return keywords.contains { name.contains($0) }
 }

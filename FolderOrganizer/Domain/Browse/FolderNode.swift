@@ -1,10 +1,8 @@
-// FolderOrganizer/Domain/Browse/FolderNode.swift
+// Domain/Browse/FolderNode.swift
 //
-// フォルダツリーのノード
-// - OutlineGroup で表示できるよう Identifiable
-// - children は Optional（nil = leaf）にして SwiftUI の要求に合わせる
-// - B-2b: 親フォルダ昇格（子が VOLUME を含むなら親を SERIES へ）
-// - C-1 : 確信度（最小）を付与
+// フォルダツリーの 1 ノードを表すモデル
+// - Tree 構築（FolderTreeBuilder）後に
+//   D-3: 確信度評価を bottom-up で確定させる
 //
 
 import Foundation
@@ -15,80 +13,55 @@ struct FolderNode: Identifiable {
 
     let id = UUID()
 
-    // MARK: - Core
+    // MARK: - Core Properties
 
-    let name: String
     let url: URL
-
-    /// 直下の「ファイル数」（ディレクトリは含めない）
+    let name: String
     let fileCount: Int
 
-    /// 推定された役割
+    /// フォルダの役割ヒント（SERIES / VOLUME / UNKNOWN）
     var roleHint: FolderRoleHint
 
-    /// 役割推定の確信度（C-1）
+    /// 確信度（D-3 で後から確定）
     var confidence: FolderConfidence
 
-    /// 子ノード（nil = leaf）
+    /// 子フォルダ（なければ nil）
     var children: [FolderNode]?
 
-    // MARK: - B-2b: Parent Promotion (Role Fixup)
+    // MARK: - D-3: Role Fixup（B-2 補助）
 
+    /// 子フォルダの内容から、親の roleHint を補正する
+    /// - 子に volume が含まれていれば series とみなす
     mutating func fixupRoleFromChildren() {
-        guard var children else { return }
 
-        // 先に子を fixup（深さ優先）
-        for i in children.indices {
-            var c = children[i]
-            c.fixupRoleFromChildren()
-            children[i] = c
+        guard let children else { return }
+
+        let hasVolumeChild = children.contains { $0.roleHint == .volume }
+
+        if hasVolumeChild {
+            roleHint = .series
         }
-
-        // 自分が UNKNOWN のとき、子に VOLUME がいれば SERIES へ昇格
-        if roleHint == .unknown {
-            let childRoles = children.map { $0.roleHint }
-            if childRoles.contains(.volume) {
-                roleHint = .series
-            }
-        }
-
-        self.children = children.isEmpty ? nil : children
     }
 
-    // MARK: - C-1: Confidence Fixup (Minimal)
+    // MARK: - D-3: Confidence Fixup
 
-    mutating func fixupConfidence(parentRoleHint: FolderRoleHint?) {
-        // 子を先に処理
+    /// 子 → 親 の順で確信度を確定させる
+    mutating func fixupConfidence(parent: FolderNode?) {
+
+        let evaluator = FolderConfidenceEvaluator()
+
+        // ① まず子を先に評価
         if var children {
-            for i in children.indices {
-                var c = children[i]
-                c.fixupConfidence(parentRoleHint: self.roleHint)
-                children[i] = c
+            for index in children.indices {
+                children[index].fixupConfidence(parent: self)
             }
-            self.children = children.isEmpty ? nil : children
+            self.children = children
         }
 
-        // --- 最小ルール（後で差し替え前提） ---
-        // VOLUME は名前パターンにより直接判定されている想定なので高め
-        if roleHint == .volume {
-            confidence = .high
-            return
-        }
-
-        // SERIES は子に VOLUME が複数あるほど根拠が強い
-        if roleHint == .series {
-            let volumeChildren = (children ?? []).filter { $0.roleHint == .volume }.count
-            confidence = (volumeChildren >= 2) ? .high : .medium
-            return
-        }
-
-        // UNKNOWN は「親が SERIES」なら一段マシ、それ以外は低
-        if roleHint == .unknown {
-            if parentRoleHint == .series {
-                confidence = .medium
-            } else {
-                confidence = .low
-            }
-        }
+        // ② 自分自身の確信度を評価
+        confidence = evaluator.evaluate(
+            node: self,
+            parent: parent
+        )
     }
 }
