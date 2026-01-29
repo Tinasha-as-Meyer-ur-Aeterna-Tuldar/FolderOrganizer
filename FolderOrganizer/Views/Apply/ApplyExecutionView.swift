@@ -1,90 +1,84 @@
 // FolderOrganizer/Views/Apply/ApplyExecutionView.swift
 //
-// Apply 実行画面
-// - 新設計：plan.originalURL.lastPathComponent を使用
+// RenamePlan を実ファイルへ適用する実行ビュー。
+// - v0.2 主目的：Apply 完了時に RenameSessionLog を自動保存（JSON Export）する
+// - このブランチでは Undo 実行 UI / Service は未導入なので、RollbackInfo は表示のみ
+// - 保存失敗は UX に影響させない（補助ログ）
 //
 
 import SwiftUI
 
 struct ApplyExecutionView: View {
 
+    // MARK: - Inputs
+
     let rootURL: URL
     let plans: [RenamePlan]
     let applyService: RenameApplyService
-
-    let onFinish: (_ results: [ApplyResult], _ rollbackInfo: RollbackInfo) -> Void
     let onClose: () -> Void
+
+    // MARK: - State
 
     @State private var isExecuting: Bool = false
     @State private var results: [ApplyResult] = []
+    @State private var rollbackInfo: RollbackInfo?
+
+    // MARK: - AutoSave
+
+    private let autoSaveService: RenameSessionLogAutoSaveService =
+        DefaultRenameSessionLogAutoSaveService()
+
+    // MARK: - Body
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
 
-            header
-
-            Divider()
-
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(plans) { plan in
-                        Text(plan.originalURL.lastPathComponent)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .font(.system(size: 13, design: .monospaced))
-                    }
-                }
-                .padding()
-            }
-
-            Divider()
-
-            footer
-        }
-        .padding()
-        .frame(minWidth: 720, minHeight: 520)
-        .onAppear {
-            runIfNeeded()
-        }
-    }
-
-    // MARK: - Parts
-
-    private var header: some View {
-        HStack {
             Text("Apply 実行")
                 .font(.headline)
 
-            Spacer()
-
-            Button("閉じる") {
-                onClose()
-            }
-        }
-    }
-
-    private var footer: some View {
-        HStack {
             if isExecuting {
-                ProgressView()
+                ProgressView("ファイルをリネーム中…")
             } else {
-                Text("準備完了")
-                    .foregroundColor(.secondary)
+                ApplyResultList(
+                    results: results,
+                    rollbackInfo: rollbackInfo
+                )
             }
 
-            Spacer()
+            HStack {
+                Spacer()
+
+                Button("閉じる") {
+                    onClose()
+                }
+            }
+        }
+        .padding()
+        .onAppear {
+            executeApplyIfNeeded()
         }
     }
 
-    // MARK: - Run
+    // MARK: - Apply
 
-    private func runIfNeeded() {
+    private func executeApplyIfNeeded() {
         guard !isExecuting else { return }
+
         isExecuting = true
 
+        // ✅ 現行 RenameApplyService の completion は (results, rollbackInfo)
         applyService.apply(plans: plans) { results, rollbackInfo in
             self.results = results
+            self.rollbackInfo = rollbackInfo
             self.isExecuting = false
-            onFinish(results, rollbackInfo)
+
+            // ✅ v0.2 の主目的：Apply 完了時に 1 回だけ自動保存
+            autoSaveService.autoSaveAppliedSnapshot(
+                rootURL: rootURL,
+                plans: plans,
+                results: results,
+                rollbackInfo: rollbackInfo
+            )
         }
     }
 }

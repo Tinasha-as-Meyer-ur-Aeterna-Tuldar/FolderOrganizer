@@ -2,7 +2,7 @@
 //
 // Rename フロー全体の Export(JSON) ログ（v0.2 の主目的）。
 // - 自動保存（AutoSave）前提なので「いつ保存しても壊れない形」にする
-// - プレビュー段階でも保存できるよう、applyLogs は optional
+// - プレビュー段階でも保存できるよう、applyResultLogs / rollbackMoves は optional
 // - 将来の分析/学習ループに使える最低限のメタ情報を同梱
 //
 
@@ -122,12 +122,13 @@ extension RenameSessionLog {
             RollbackMoveLog(fromPath: $0.from.path, toPath: $0.to.path)
         }
 
+        // ✅ 引数ラベルは「init の順番」に合わせる（Swift のルール）
         return RenameSessionLog(
+            appliedAt: appliedAt,
             rootPath: rootURL.path,
             planLogs: planLogs,
             applyResultLogs: applyLogs,
-            rollbackMoves: moves,
-            appliedAt: appliedAt
+            rollbackMoves: moves
         )
     }
 }
